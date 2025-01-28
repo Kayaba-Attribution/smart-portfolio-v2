@@ -6,19 +6,23 @@ import {
   Transaction,
   TransactionButton,
   TransactionSponsor,
-  TransactionStatus,
-  TransactionStatusLabel,
-  TransactionStatusAction,
+  TransactionToast,
+  TransactionToastIcon,
+  TransactionToastLabel,
+  TransactionToastAction,
   type LifecycleStatus,
 } from "@coinbase/onchainkit/transaction";
-import { Card, CardHeader, CardTitle, CardDescription } from "./ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
+
 import { ERC20_FAUCET_ABI } from "../abi/erc20Faucet";
+import { useState } from "react";
 
 const USDC_ADDRESS = "0xCE8565457Cca0fC7542608A2c78610Ed7bC66C8C";
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 export function Faucet() {
   const { address } = useAccount();
+  const [key, setKey] = useState(0);
 
   const calls = [
     {
@@ -33,6 +37,9 @@ export function Faucet() {
 
   const handleStatus = (status: LifecycleStatus) => {
     console.log("Transaction status:", status);
+    if (status.statusName === 'transactionSuccess') {
+      setTimeout(() => setKey(prev => prev + 1), 2000);
+    }
   };
 
   if (!address) {
@@ -42,35 +49,45 @@ export function Faucet() {
   return (
     <Card className="w-full max-w-md mx-auto mt-4">
       <CardHeader>
-        <CardTitle>USDC Faucet</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          USDC Faucet
+        </CardTitle>
         <CardDescription>
           Claim test USDC tokens on Base Sepolia
         </CardDescription>
       </CardHeader>
-
-      <div className="p-6">
+      
+      <CardContent>
         <Transaction
+          key={key}
           chainId={BASE_SEPOLIA_CHAIN_ID}
           calls={calls}
           isSponsored={true}
           onStatus={handleStatus}
         >
           <div className="space-y-4">
-            <TransactionButton className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-              Claim USDC
-            </TransactionButton>
+            <TransactionButton 
+              text="Claim USDC"
+              successOverride={{
+                text: "Claim Again",
+                onClick: () => setKey(prev => prev + 1)
+              }}
+            />
+            
+            <div className="text-sm text-gray-500">
+              <TransactionSponsor/>
+            </div>
 
-            <TransactionSponsor />
-
-            <TransactionStatus>
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <TransactionStatusLabel />
-                <TransactionStatusAction />
+            <TransactionToast>
+              <div className="flex items-center gap-2">
+                <TransactionToastIcon />
+                <TransactionToastLabel />
+                <TransactionToastAction />
               </div>
-            </TransactionStatus>
+            </TransactionToast>
           </div>
         </Transaction>
-      </div>
+      </CardContent>
     </Card>
   );
 }

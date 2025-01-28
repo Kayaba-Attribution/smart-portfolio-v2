@@ -68,7 +68,7 @@ function PushNotificationManager() {
 
   // Add USDC contract configuration
   const USDC_CONTRACT = {
-    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    address: "0xCE8565457Cca0fC7542608A2c78610Ed7bC66C8C",
     abi: ERC20_ABI,
   } as const;
 
@@ -80,7 +80,7 @@ function PushNotificationManager() {
   });
 
   // Format USDC balance with proper decimals
-  const formattedBalance = usdcBalance ? formatUnits(usdcBalance, 6) : "0";
+  const formattedBalance = usdcBalance ? formatUnits(usdcBalance, 18) : "0";
 
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
