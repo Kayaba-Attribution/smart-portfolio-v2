@@ -11,6 +11,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { PlusCircle, Share2 } from "lucide-react";
+import { Faucet } from '../components/Faucet';
 
 import {
   ConnectWallet,
@@ -199,6 +200,7 @@ function PushNotificationManager() {
           </Button>
         )}
       </CardContent>
+      <Faucet />
     </Card>
   );
 }
