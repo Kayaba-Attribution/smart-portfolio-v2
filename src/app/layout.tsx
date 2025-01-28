@@ -1,6 +1,8 @@
+import '@coinbase/onchainkit/styles.css';
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from '@/components/providers';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,8 +24,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'My PWA App',
   description: 'Progressive Web Application built with Next.js',
-  manifest: '/manifest.webmanifest',
-  themeColor: '#000000',
 };
 
 export default function RootLayout({
@@ -36,7 +36,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased fixed inset-0 overflow-hidden`}
       >
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

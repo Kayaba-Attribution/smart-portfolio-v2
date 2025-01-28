@@ -3,9 +3,35 @@
 import { useState, useEffect } from "react";
 import { subscribeUser, unsubscribeUser, sendNotification } from "./actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
 import { PlusCircle, Share2 } from "lucide-react";
 
+import {
+  ConnectWallet,
+  Wallet,
+  WalletDropdown,
+  WalletDropdownBasename,
+  WalletDropdownFundLink,
+  WalletDropdownLink,
+  WalletDropdownDisconnect,
+} from "@coinbase/onchainkit/wallet";
+import {
+  Address,
+  Avatar,
+  Name,
+  Identity,
+  EthBalance,
+} from "@coinbase/onchainkit/identity";
+
+import { isBase } from "@coinbase/onchainkit";
+import { useReadContract, useAccount } from "wagmi";
+import { formatUnits } from "viem";
 
 // Add the URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -21,9 +47,39 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 function PushNotificationManager() {
+  const { address } = useAccount();
   const [isSupported, setIsSupported] = useState(false);
-  const [subscription, setSubscription] = useState<PushSubscription | null>(null);
+  const [subscription, setSubscription] = useState<PushSubscription | null>(
+    null
+  );
   const [message, setMessage] = useState("");
+
+  // Add ERC20 ABI (only what we need for balanceOf)
+  const ERC20_ABI = [
+    {
+      inputs: [{ name: "account", type: "address" }],
+      name: "balanceOf",
+      outputs: [{ name: "", type: "uint256" }],
+      stateMutability: "view",
+      type: "function",
+    },
+  ] as const;
+
+  // Add USDC contract configuration
+  const USDC_CONTRACT = {
+    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    abi: ERC20_ABI,
+  } as const;
+
+  // Add USDC balance reading
+  const { data: usdcBalance } = useReadContract({
+    ...USDC_CONTRACT,
+    functionName: "balanceOf",
+    args: [address as `0x${string}`],
+  });
+
+  // Format USDC balance with proper decimals
+  const formattedBalance = usdcBalance ? formatUnits(usdcBalance, 6) : "0";
 
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
@@ -33,9 +89,9 @@ function PushNotificationManager() {
   }, []);
 
   async function registerServiceWorker() {
-    const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
-      updateViaCache: 'none',
+    const registration = await navigator.serviceWorker.register("/sw.js", {
+      scope: "/",
+      updateViaCache: "none",
     });
     const sub = await registration.pushManager.getSubscription();
     setSubscription(sub);
@@ -82,13 +138,32 @@ function PushNotificationManager() {
 
   return (
     <Card className="w-full max-w-md mx-auto">
+      <Wallet>
+        <ConnectWallet>
+          <Avatar className="h-6 w-6" />
+          <Name />
+        </ConnectWallet>
+        <WalletDropdown>
+          <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+            <Avatar />
+            <Name />
+            <Address />
+            <EthBalance />
+          </Identity>
+          <WalletDropdownBasename />
+          <WalletDropdownLink icon="wallet" href="https://keys.coinbase.com">
+            Wallet
+          </WalletDropdownLink>
+          <WalletDropdownFundLink />
+          <WalletDropdownDisconnect />
+        </WalletDropdown>
+      </Wallet>
       <CardHeader>
         <CardTitle>Push Notifications</CardTitle>
-        <CardDescription>
-          {subscription 
-            ? "You're currently receiving notifications" 
-            : "Enable notifications to stay updated"}
-        </CardDescription>
+        <CardDescription>USDC Balance: {formattedBalance} USDC</CardDescription>
+        {subscription
+          ? "You're currently receiving notifications"
+          : "Enable notifications to stay updated"}
       </CardHeader>
       <CardContent className="space-y-4">
         {subscription ? (
@@ -102,15 +177,15 @@ function PushNotificationManager() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                 />
-                <Button 
+                <Button
                   onClick={sendTestNotification}
                   disabled={!message.trim()}
                 >
                   Send Test
                 </Button>
               </div>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 className="w-full"
                 onClick={unsubscribeFromPush}
               >
@@ -119,10 +194,7 @@ function PushNotificationManager() {
             </div>
           </>
         ) : (
-          <Button 
-            className="w-full" 
-            onClick={subscribeToPush}
-          >
+          <Button className="w-full" onClick={subscribeToPush}>
             Subscribe to Notifications
           </Button>
         )}
