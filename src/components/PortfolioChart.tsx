@@ -105,21 +105,23 @@ export function PortfolioChart({ currentValue }: PortfolioChartProps) {
 
   return (
     <Card>
-      <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
-        <div className="grid flex-1 gap-1 text-center sm:text-left">
-          <CardTitle className="text-base">Portfolio History</CardTitle>
-          <CardDescription>Value trend over time</CardDescription>
+      <CardHeader className="flex flex-col sm:flex-row items-center gap-4 space-y-0 border-b py-5">
+        <div className="flex items-center gap-2 w-full justify-between sm:justify-start">
+          <div className="grid gap-1">
+            <CardTitle className="text-base">Net Worth Evolution</CardTitle>
+            <CardDescription>Value trend over time</CardDescription>
+          </div>
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[160px] rounded-lg">
+              <SelectValue placeholder="Last 3 months" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="90d">Last 3 months</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[160px] rounded-lg sm:ml-auto">
-            <SelectValue placeholder="Last 3 months" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="90d">Last 3 months</SelectItem>
-            <SelectItem value="30d">Last 30 days</SelectItem>
-            <SelectItem value="7d">Last 7 days</SelectItem>
-          </SelectContent>
-        </Select>
       </CardHeader>
       <CardContent className="pb-4">
         <ChartContainer config={chartConfig}>

@@ -14,9 +14,6 @@ export function TokenBalanceDisplay() {
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Token Balances</CardTitle>
-      </CardHeader>
       <CardContent>
         <div className="relative overflow-x-auto">
           <table className="w-full text-sm text-left">

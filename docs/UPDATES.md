@@ -2,9 +2,10 @@ Jan 30 Goals:
 
 + ✅ UI for all pages basic Done
 + ✅ Share context between pages
-+ Pull token balances
++ ✅ Pull token balances
++ ✅ Portfolio Page
 + Copy Landing page 
-+ Figma Design
++ Figma Design not needed
 
 
 Next Hour Goals (Prioritized)
