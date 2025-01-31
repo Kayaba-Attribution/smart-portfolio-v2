@@ -36,6 +36,7 @@
 │   │   ├── BottomNav.tsx
 │   │   ├── Faucet.tsx
 │   │   ├── Header.tsx
+│   │   ├── PageWrapper.tsx
 │   │   ├── providers.tsx
 │   │   └── ui
 │   │       ├── alert.tsx
@@ -44,10 +45,13 @@
 │   │       └── input.tsx
 │   ├── contexts
 │   │   ├── AccountContext.tsx
-│   │   └── PortfolioContext.tsx
+│   │   ├── PortfolioContext.tsx
+│   │   └── ThemeContext.tsx
+│   ├── contracts
+│   │   └── addresses.json
 │   └── lib
 │       └── utils.ts
 ├── tailwind.config.ts
 └── tsconfig.json
 
-13 directories, 37 files
+14 directories, 40 files

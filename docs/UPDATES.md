@@ -1,6 +1,6 @@
 Jan 30 Goals:
 
-+ UI for all pages basic
++ UI for all pages basic Done
 + Share context between pages
 + Pull token balances
 + Copy Landing page 

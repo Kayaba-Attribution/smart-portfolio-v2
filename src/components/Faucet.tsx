@@ -13,20 +13,21 @@ import {
   type LifecycleStatus,
 } from "@coinbase/onchainkit/transaction";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
-
+import { useTokenBalances } from "@/contexts/TokenBalanceContext";
 import { ERC20_FAUCET_ABI } from "../abi/erc20Faucet";
 import { useState } from "react";
+import addresses from "../contracts/addresses.json";
 
-const USDC_ADDRESS = "0xCE8565457Cca0fC7542608A2c78610Ed7bC66C8C";
 const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 export function Faucet() {
   const { address } = useAccount();
+  const { refreshBalances } = useTokenBalances();
   const [key, setKey] = useState(0);
 
   const calls = [
     {
-      to: USDC_ADDRESS,
+      to: addresses.tokens.USDC as `0x${string}`,
       data: encodeFunctionData({
         abi: ERC20_FAUCET_ABI,
         functionName: "claimFaucet",
@@ -35,10 +36,16 @@ export function Faucet() {
     },
   ];
 
-  const handleStatus = (status: LifecycleStatus) => {
+  const handleStatus = async (status: LifecycleStatus) => {
     console.log("Transaction status:", status);
-    if (status.statusName === 'transactionSuccess') {
-      setTimeout(() => setKey(prev => prev + 1), 2000);
+    if (status.statusName === 'success') {
+      try {
+        await refreshBalances();
+        console.log("Balances refreshed successfully");
+      } catch (error) {
+        console.error("Error refreshing balances:", error);
+      }
+      setKey(prev => prev + 1);
     }
   };
 
