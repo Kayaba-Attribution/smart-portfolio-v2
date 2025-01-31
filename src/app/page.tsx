@@ -13,24 +13,6 @@ import {
 import { PlusCircle, Share2 } from "lucide-react";
 import { Faucet } from '../components/Faucet';
 
-import {
-  ConnectWallet,
-  Wallet,
-  WalletDropdown,
-  WalletDropdownBasename,
-  WalletDropdownFundLink,
-  WalletDropdownLink,
-  WalletDropdownDisconnect,
-} from "@coinbase/onchainkit/wallet";
-import {
-  Address,
-  Avatar,
-  Name,
-  Identity,
-  EthBalance,
-} from "@coinbase/onchainkit/identity";
-
-import { isBase } from "@coinbase/onchainkit";
 import { useReadContract, useAccount } from "wagmi";
 import { formatUnits } from "viem";
 
@@ -139,26 +121,6 @@ function PushNotificationManager() {
 
   return (
     <Card className="w-full max-w-md mx-auto">
-      <Wallet>
-        <ConnectWallet>
-          <Avatar className="h-6 w-6" />
-          <Name />
-        </ConnectWallet>
-        <WalletDropdown>
-          <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-            <Avatar />
-            <Name />
-            <Address />
-            <EthBalance />
-          </Identity>
-          <WalletDropdownBasename />
-          <WalletDropdownLink icon="wallet" href="https://keys.coinbase.com">
-            Wallet
-          </WalletDropdownLink>
-          <WalletDropdownFundLink />
-          <WalletDropdownDisconnect />
-        </WalletDropdown>
-      </Wallet>
       <CardHeader>
         <CardTitle>Push Notifications</CardTitle>
         <CardDescription>USDC Balance: {formattedBalance} USDC</CardDescription>
@@ -275,9 +237,6 @@ export default function Page() {
           <CardTitle>Portfolio Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <Wallet>
-            {/* Existing wallet connection UI */}
-          </Wallet>
           <div className="h-40 flex items-center justify-center text-muted-foreground">
             Portfolio charts coming soon
           </div>
