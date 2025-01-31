@@ -8,7 +8,7 @@ interface PageWrapperProps {
 
 export function PageWrapper({ children }: PageWrapperProps) {
   return (
-    <div className="container p-4 space-y-4 h-full overflow-y-auto">
+    <div className="container py-4 space-y-4 h-full overflow-y-auto">
       {children}
     </div>
   );

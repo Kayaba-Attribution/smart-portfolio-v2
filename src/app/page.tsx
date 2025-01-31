@@ -19,9 +19,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Faucet } from "../components/Faucet";
-
-import { useReadContract, useAccount } from "wagmi";
-import { formatUnits } from "viem";
+import { useAccount } from "wagmi";
 import { PageWrapper } from "@/components/PageWrapper";
 import { TokenBalanceDisplay } from "@/components/TokenBalanceDisplay";
 import { useTokenBalances } from "@/contexts/TokenBalanceContext";
@@ -267,60 +265,7 @@ function PortfolioOverview() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Token Balances</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {Object.entries(tokens).map(([symbol, token]) => {
-              const balance = balances[symbol] || "0";
-              const dummyPrice =
-                symbol === "USDC" ? 1 : symbol === "WBTC" ? 40000 : 2000;
-              const value = parseFloat(balance) * dummyPrice;
-              const percentage = (value / totalValue) * 100;
-
-              return (
-                <div key={symbol} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      {token.icon ? (
-                        <img
-                          src={token.icon}
-                          alt={symbol}
-                          className="w-6 h-6 rounded-full"
-                        />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
-                          {symbol[0]}
-                        </div>
-                      )}
-                      <div>
-                        <div className="font-medium">{symbol}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {parseFloat(balance).toFixed(4)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div>
-                        $
-                        {value.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {percentage.toFixed(1)}%
-                      </div>
-                    </div>
-                  </div>
-                  <Progress value={percentage} className="h-2" />
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      <TokenBalanceDisplay />
 
       <Card>
         <CardHeader>
