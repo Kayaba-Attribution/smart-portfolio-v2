@@ -10,13 +10,22 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { PlusCircle, Share2 } from "lucide-react";
-import { Faucet } from '../components/Faucet';
+import {
+  PlusCircle,
+  Share2,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  RefreshCcw,
+  ExternalLink,
+} from "lucide-react";
+import { Faucet } from "../components/Faucet";
 
 import { useReadContract, useAccount } from "wagmi";
 import { formatUnits } from "viem";
 import { PageWrapper } from "@/components/PageWrapper";
 import { TokenBalanceDisplay } from "@/components/TokenBalanceDisplay";
+import { useTokenBalances } from "@/contexts/TokenBalanceContext";
+import { Progress } from "@/components/ui/progress";
 
 // Add the URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -187,6 +196,163 @@ function InstallPrompt() {
   );
 }
 
+// Dummy data for portfolio stats
+const PORTFOLIO_STATS = {
+  totalValue: 12300.45,
+  change24h: 3.4,
+  lastUpdated: new Date().toLocaleTimeString(),
+};
+
+function PortfolioOverview() {
+  const { balances, tokens, refreshBalances, isLoading } = useTokenBalances();
+
+  // Calculate total portfolio value (dummy calculation)
+  const totalValue = Object.entries(balances).reduce(
+    (acc, [symbol, balance]) => {
+      const dummyPrice =
+        symbol === "USDC" ? 1 : symbol === "WBTC" ? 40000 : 2000;
+      return acc + parseFloat(balance) * dummyPrice;
+    },
+    0
+  );
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="pt-6">
+          {/* Top Row */}
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Total Portfolio Value
+            </div>
+            <div
+              className={`flex items-center mr-8 ${
+                PORTFOLIO_STATS.change24h >= 0
+                  ? "text-green-500"
+                  : "text-red-500"
+              }`}
+            >
+              {PORTFOLIO_STATS.change24h >= 0 ? "+" : "-"}
+              {Math.abs(PORTFOLIO_STATS.change24h)}%
+              {PORTFOLIO_STATS.change24h >= 0 ? "📈" : "📉"}
+            </div>
+          </div>
+
+          {/* Bottom Row */}
+          <div className="flex justify-between items-center">
+            <div className="text-4xl font-bold">
+              $
+              {totalValue.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Last Updated: <br />
+              {new Date().toLocaleTimeString()}
+            </div>
+          </div>
+
+          {/* Refresh Button - Absolute positioned */}
+          <div className="absolute top-4 right-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refreshBalances}
+              disabled={isLoading}
+              className="h-8 w-8 p-0"
+            >
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Token Balances</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Object.entries(tokens).map(([symbol, token]) => {
+              const balance = balances[symbol] || "0";
+              const dummyPrice =
+                symbol === "USDC" ? 1 : symbol === "WBTC" ? 40000 : 2000;
+              const value = parseFloat(balance) * dummyPrice;
+              const percentage = (value / totalValue) * 100;
+
+              return (
+                <div key={symbol} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      {token.icon ? (
+                        <img
+                          src={token.icon}
+                          alt={symbol}
+                          className="w-6 h-6 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                          {symbol[0]}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium">{symbol}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {parseFloat(balance).toFixed(4)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div>
+                        $
+                        {value.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {percentage.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                  <Progress value={percentage} className="h-2" />
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <Button className="w-full">
+              <ArrowUpIcon className="mr-2 h-4 w-4" />
+              Deposit
+            </Button>
+            <Button className="w-full">
+              <ArrowDownIcon className="mr-2 h-4 w-4" />
+              Withdraw
+            </Button>
+            <Button className="w-full">
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Swap
+            </Button>
+            <Button className="w-full">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Invest
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <PushNotificationManager />
+    </div>
+  );
+}
+
 export default function Page() {
   const { address } = useAccount();
   const [isStandalone, setIsStandalone] = useState(false);
@@ -205,34 +371,7 @@ export default function Page() {
 
   return (
     <PageWrapper>
-      <Card>
-        <CardHeader>
-          <CardTitle>Portfolio Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-40 flex items-center justify-center text-muted-foreground">
-            Portfolio charts coming soon
-          </div>
-        </CardContent>
-      </Card>
-
-      <TokenBalanceDisplay />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <Button className="w-full">Deposit</Button>
-            <Button className="w-full">Withdraw</Button>
-            <Button className="w-full">Swap</Button>
-            <Button className="w-full">Invest</Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <PushNotificationManager />
+      <PortfolioOverview />
     </PageWrapper>
   );
 }
