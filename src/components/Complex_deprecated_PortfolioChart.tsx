@@ -28,53 +28,33 @@ import {
 // Generate dummy historical data based on current value
 function generateHistoricalData(currentValue: number, days: number) {
   const data = []
-  let value = currentValue * 0.7 // Start from 70% of current value
-  let stableValue = currentValue * 0.3 // Stable coins
-  let cryptoValue = currentValue * 0.4 // Crypto assets
-  let stocksValue = currentValue * 0.2 // Stocks
-  
   const endDate = new Date()
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - days)
 
   for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-    const change = (Math.random() - 0.3) * 0.1 // -20% to +20% change
-    const stableChange = (Math.random() - 0.5) * 0.001 // Very small changes for stable
-    const cryptoChange = (Math.random() - 0.3) * 0.15 // More volatile
-    const stocksChange = (Math.random() - 0.3) * 0.08 // Moderate volatility
-    
-    value = value * (1 + change)
-    stableValue = stableValue * (1 + stableChange)
-    cryptoValue = cryptoValue * (1 + cryptoChange)
-    stocksValue = stocksValue * (1 + stocksChange)
-    
     data.push({
       date: date.toISOString().split('T')[0],
-      total: Math.round(value * 100) / 100,
-      stable: Math.round(stableValue * 100) / 100,
-      crypto: Math.round(cryptoValue * 100) / 100,
-      stocks: Math.round(stocksValue * 100) / 100,
+      stocks: Math.round(currentValue * 0.3 * (1 + Math.random() * 0.1) * 100) / 100,
+      crypto: Math.round(currentValue * 0.4 * (1 + Math.random() * 0.2) * 100) / 100,
+      stable: Math.round(currentValue * 0.3 * (1 + Math.random() * 0.01) * 100) / 100,
     })
   }
   return data
 }
 
 const chartConfig = {
-  total: {
-    label: "Total Portfolio",
-    color: "hsl(var(--primary))",
-  },
-  stable: {
-    label: "Stable Coins",
-    color: "hsl(var(--blue-500))",
-  },
-  crypto: {
-    label: "Crypto Assets",
-    color: "hsl(var(--orange-500))",
-  },
   stocks: {
     label: "Stocks",
-    color: "hsl(var(--green-500))",
+    color: "hsl(var(--chart-1))",
+  },
+  crypto: {
+    label: "Crypto",
+    color: "hsl(var(--chart-2))",
+  },
+  stable: {
+    label: "Stable",
+    color: "hsl(var(--chart-3))",
   },
 } satisfies ChartConfig
 
@@ -99,9 +79,11 @@ export function PortfolioChart({ currentValue }: PortfolioChartProps) {
     [currentValue, timeRange]
   )
 
-  const lastValue = chartData[chartData.length - 2].total
-  const currentMonthValue = chartData[chartData.length - 1].total
-  const change = ((currentMonthValue - lastValue) / lastValue) * 100
+  const lastValue = chartData[chartData.length - 2]
+  const currentMonthValue = chartData[chartData.length - 1]
+  const totalLast = lastValue.stocks + lastValue.crypto + lastValue.stable
+  const totalCurrent = currentMonthValue.stocks + currentMonthValue.crypto + currentMonthValue.stable
+  const change = ((totalCurrent - totalLast) / totalLast) * 100
 
   return (
     <Card>
@@ -133,7 +115,7 @@ export function PortfolioChart({ currentValue }: PortfolioChartProps) {
                 bottom: 0,
               }}
             >
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="date"
                 tickLine={false}
@@ -150,62 +132,31 @@ export function PortfolioChart({ currentValue }: PortfolioChartProps) {
               />
               <ChartTooltip
                 cursor={false}
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={(value) => {
-                      return new Date(value).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric"
-                      })
-                    }}
-                    valueFormatter={(value) => 
-                      `$${Number(value).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}`
-                    }
-                  />
-                }
-              />
-              <defs>
-                {Object.entries(chartConfig).map(([key, config]) => (
-                  <linearGradient key={key} id={`gradient${key}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={config.color} stopOpacity={0.2} />
-                    <stop offset="100%" stopColor={config.color} stopOpacity={0} />
-                  </linearGradient>
-                ))}
-              </defs>
-              <Area
-                type="monotone"
-                dataKey="total"
-                stroke={chartConfig.total.color}
-                fill="url(#gradienttotal)"
-                strokeWidth={2}
-                fillOpacity={0.2}
+                content={<ChartTooltipContent indicator="dot" />}
               />
               <Area
                 type="monotone"
                 dataKey="stable"
-                stroke={chartConfig.stable.color}
-                fill="url(#gradientstable)"
-                strokeWidth={1}
-                fillOpacity={0.1}
+                stackId="a"
+                fill="var(--color-stable)"
+                fillOpacity={0.4}
+                stroke="var(--color-stable)"
               />
               <Area
                 type="monotone"
                 dataKey="crypto"
-                stroke={chartConfig.crypto.color}
-                fill="url(#gradientcrypto)"
-                strokeWidth={1}
-                fillOpacity={0.1}
+                stackId="a"
+                fill="var(--color-crypto)"
+                fillOpacity={0.4}
+                stroke="var(--color-crypto)"
               />
               <Area
                 type="monotone"
                 dataKey="stocks"
-                stroke={chartConfig.stocks.color}
-                fill="url(#gradientstocks)"
-                strokeWidth={1}
-                fillOpacity={0.1}
+                stackId="a"
+                fill="var(--color-stocks)"
+                fillOpacity={0.4}
+                stroke="var(--color-stocks)"
               />
             </AreaChart>
           </ResponsiveContainer>
