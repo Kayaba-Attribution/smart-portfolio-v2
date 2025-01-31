@@ -272,22 +272,22 @@ function PortfolioOverview() {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <Button className="w-full">
-              <ArrowUpIcon className="mr-2 h-4 w-4" />
-              Deposit
+          <div className="grid grid-cols-4 gap-4">
+            <Button className="aspect-square flex flex-col items-center justify-center p-0 h-20">
+              <ArrowUpIcon className="h-6 w-6 mb-1" />
+              <span className="text-xs">Deposit</span>
             </Button>
-            <Button className="w-full">
-              <ArrowDownIcon className="mr-2 h-4 w-4" />
-              Withdraw
+            <Button className="aspect-square flex flex-col items-center justify-center p-0 h-20">
+              <ArrowDownIcon className="h-6 w-6 mb-1" />
+              <span className="text-xs">Withdraw</span>
             </Button>
-            <Button className="w-full">
-              <RefreshCcw className="mr-2 h-4 w-4" />
-              Swap
+            <Button className="aspect-square flex flex-col items-center justify-center p-0 h-20">
+              <RefreshCcw className="h-6 w-6 mb-1" />
+              <span className="text-xs">Swap</span>
             </Button>
-            <Button className="w-full">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Invest
+            <Button className="aspect-square flex flex-col items-center justify-center p-0 h-20">
+              <ExternalLink className="h-6 w-6 mb-1" />
+              <span className="text-xs">Invest</span>
             </Button>
           </div>
         </CardContent>
