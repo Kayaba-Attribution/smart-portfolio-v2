@@ -253,6 +253,7 @@ function InstallPrompt() {
 }
 
 export default function Page() {
+  const { address } = useAccount();
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
@@ -268,7 +269,35 @@ export default function Page() {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container p-4 space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Portfolio Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Wallet>
+            {/* Existing wallet connection UI */}
+          </Wallet>
+          <div className="h-40 flex items-center justify-center text-muted-foreground">
+            Portfolio charts coming soon
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <Button className="w-full">Deposit</Button>
+            <Button className="w-full">Withdraw</Button>
+            <Button className="w-full">Swap</Button>
+            <Button className="w-full">Invest</Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <PushNotificationManager />
     </div>
   );
