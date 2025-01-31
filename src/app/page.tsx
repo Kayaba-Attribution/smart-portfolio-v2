@@ -24,6 +24,7 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { TokenBalanceDisplay } from "@/components/TokenBalanceDisplay";
 import { useTokenBalances } from "@/contexts/TokenBalanceContext";
 import { Progress } from "@/components/ui/progress";
+import { PortfolioChart } from "@/components/PortfolioChart";
 
 // Add the URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -204,15 +205,11 @@ const PORTFOLIO_STATS = {
 function PortfolioOverview() {
   const { balances, tokens, refreshBalances, isLoading } = useTokenBalances();
 
-  // Calculate total portfolio value (dummy calculation)
-  const totalValue = Object.entries(balances).reduce(
-    (acc, [symbol, balance]) => {
-      const dummyPrice =
-        symbol === "USDC" ? 1 : symbol === "WBTC" ? 40000 : 2000;
-      return acc + parseFloat(balance) * dummyPrice;
-    },
-    0
-  );
+  // Calculate total portfolio value
+  const totalValue = Object.entries(balances).reduce((acc, [symbol, balance]) => {
+    const dummyPrice = symbol === 'USDC' ? 1 : symbol === 'WBTC' ? 40000 : 2000;
+    return acc + (parseFloat(balance) * dummyPrice);
+  }, 0);
 
   return (
     <div className="space-y-4">
@@ -264,6 +261,8 @@ function PortfolioOverview() {
           </div>
         </CardContent>
       </Card>
+
+      <PortfolioChart currentValue={totalValue} />
 
       <TokenBalanceDisplay />
 
