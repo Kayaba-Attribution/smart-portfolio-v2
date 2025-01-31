@@ -1,6 +1,6 @@
 import "@coinbase/onchainkit/styles.css";
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { BottomNav } from "@/components/BottomNav";
@@ -8,11 +8,6 @@ import { Header } from "@/components/Header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -34,11 +29,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background">
+    <html lang="en" suppressHydrationWarning className={geistSans.variable}>
+      <body 
+        className="min-h-screen bg-background overflow-x-hidden overscroll-y-none"
+        style={{ 
+          position: 'fixed',
+          width: '100%',
+          height: '100%'
+        }}
+      >
         <Providers>
           <Header />
-          <main className="pt-20 pb-24">{children}</main>
+          <main className="h-[100dvh] pt-16 pb-20 overflow-y-auto">
+            {children}
+          </main>
           <BottomNav />
         </Providers>
       </body>

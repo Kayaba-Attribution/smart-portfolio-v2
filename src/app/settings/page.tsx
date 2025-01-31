@@ -1,42 +1,21 @@
 "use client";
 
+import { PageWrapper } from "@/components/PageWrapper";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default function SettingsPage() {
   return (
-    <div className="container p-4 space-y-4">
+    <PageWrapper>
       <Card>
         <CardHeader>
-          <CardTitle>Profile & Security</CardTitle>
+          <CardTitle>Settings</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-32 flex items-center justify-center text-muted-foreground">
-            Security settings coming soon
+          <div className="h-40 flex items-center justify-center text-muted-foreground">
+            Settings interface coming soon
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Wallet Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-32 flex items-center justify-center text-muted-foreground">
-            Wallet management coming soon
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Preferences</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-32 flex items-center justify-center text-muted-foreground">
-            Preferences coming soon
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    </PageWrapper>
   );
 } 

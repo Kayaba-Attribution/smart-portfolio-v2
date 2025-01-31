@@ -15,6 +15,7 @@ import { Faucet } from '../components/Faucet';
 
 import { useReadContract, useAccount } from "wagmi";
 import { formatUnits } from "viem";
+import { PageWrapper } from "@/components/PageWrapper";
 
 // Add the URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -231,7 +232,7 @@ export default function Page() {
   }
 
   return (
-    <div className="container p-4 space-y-4">
+    <PageWrapper>
       <Card>
         <CardHeader>
           <CardTitle>Portfolio Overview</CardTitle>
@@ -258,6 +259,6 @@ export default function Page() {
       </Card>
 
       <PushNotificationManager />
-    </div>
+    </PageWrapper>
   );
 }

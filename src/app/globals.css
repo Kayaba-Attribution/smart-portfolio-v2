@@ -2,8 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 @layer base {
@@ -33,6 +40,7 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    scroll-behavior: smooth;
   }
   .dark {
     --background: 0 0% 3.9%;

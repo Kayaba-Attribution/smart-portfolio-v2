@@ -1,31 +1,21 @@
 "use client";
 
+import { PageWrapper } from "@/components/PageWrapper";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default function ActivityPage() {
   return (
-    <div className="container p-4 space-y-4">
+    <PageWrapper>
       <Card>
         <CardHeader>
-          <CardTitle>Transaction History</CardTitle>
+          <CardTitle>Activity</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-40 flex items-center justify-center text-muted-foreground">
-            Transaction history coming soon
+            Activity feed coming soon
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>AI Insights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-40 flex items-center justify-center text-muted-foreground">
-            AI insights coming soon
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    </PageWrapper>
   );
 } 
