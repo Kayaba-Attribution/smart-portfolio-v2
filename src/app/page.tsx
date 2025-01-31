@@ -16,6 +16,7 @@ import { Faucet } from '../components/Faucet';
 import { useReadContract, useAccount } from "wagmi";
 import { formatUnits } from "viem";
 import { PageWrapper } from "@/components/PageWrapper";
+import { TokenBalanceDisplay } from "@/components/TokenBalanceDisplay";
 
 // Add the URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -31,39 +32,11 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 function PushNotificationManager() {
-  const { address } = useAccount();
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null
   );
   const [message, setMessage] = useState("");
-
-  // Add ERC20 ABI (only what we need for balanceOf)
-  const ERC20_ABI = [
-    {
-      inputs: [{ name: "account", type: "address" }],
-      name: "balanceOf",
-      outputs: [{ name: "", type: "uint256" }],
-      stateMutability: "view",
-      type: "function",
-    },
-  ] as const;
-
-  // Add USDC contract configuration
-  const USDC_CONTRACT = {
-    address: "0xCE8565457Cca0fC7542608A2c78610Ed7bC66C8C",
-    abi: ERC20_ABI,
-  } as const;
-
-  // Add USDC balance reading
-  const { data: usdcBalance } = useReadContract({
-    ...USDC_CONTRACT,
-    functionName: "balanceOf",
-    args: [address as `0x${string}`],
-  });
-
-  // Format USDC balance with proper decimals
-  const formattedBalance = usdcBalance ? formatUnits(usdcBalance, 18) : "0";
 
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
@@ -124,7 +97,6 @@ function PushNotificationManager() {
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle>Push Notifications</CardTitle>
-        <CardDescription>USDC Balance: {formattedBalance} USDC</CardDescription>
         {subscription
           ? "You're currently receiving notifications"
           : "Enable notifications to stay updated"}
@@ -243,6 +215,8 @@ export default function Page() {
           </div>
         </CardContent>
       </Card>
+
+      <TokenBalanceDisplay />
 
       <Card>
         <CardHeader>

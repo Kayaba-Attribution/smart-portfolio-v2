@@ -46,7 +46,8 @@
 │   ├── contexts
 │   │   ├── AccountContext.tsx
 │   │   ├── PortfolioContext.tsx
-│   │   └── ThemeContext.tsx
+│   │   ├── ThemeContext.tsx
+│   │   └── TokenBalanceContext.tsx
 │   ├── contracts
 │   │   └── addresses.json
 │   └── lib
@@ -54,4 +55,4 @@
 ├── tailwind.config.ts
 └── tsconfig.json
 
-14 directories, 40 files
+14 directories, 41 files

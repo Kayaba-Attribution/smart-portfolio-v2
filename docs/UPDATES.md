@@ -1,7 +1,7 @@
 Jan 30 Goals:
 
-+ UI for all pages basic Done
-+ Share context between pages
++ ✅ UI for all pages basic Done
++ ✅ Share context between pages
 + Pull token balances
 + Copy Landing page 
 + Figma Design
