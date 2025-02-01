@@ -1,11 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
 import { motion } from "framer-motion";
-
-interface PageWrapperProps {
-  children: ReactNode;
-}
 
 const pageVariants = {
   initial: {
@@ -28,7 +23,7 @@ const pageTransition = {
   duration: 0.4
 };
 
-export function PageWrapper({ children }: PageWrapperProps) {
+export function MotionWrapper({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
       initial="initial"
@@ -36,7 +31,6 @@ export function PageWrapper({ children }: PageWrapperProps) {
       exit="exit"
       variants={pageVariants}
       transition={pageTransition}
-      className="container py-4 space-y-4 h-full overflow-y-auto"
     >
       {children}
     </motion.div>

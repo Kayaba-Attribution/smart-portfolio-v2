@@ -25,6 +25,7 @@ import { TokenBalanceDisplay } from "@/components/TokenBalanceDisplay";
 import { useTokenBalances } from "@/contexts/TokenBalanceContext";
 import { Progress } from "@/components/ui/progress";
 import { PortfolioChart } from "@/components/PortfolioChart";
+import { MotionWrapper } from "@/components/MotionWrapper";
 
 // Add the URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -307,9 +308,11 @@ export default function Page() {
 
   if (!isStandalone) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <InstallPrompt />
-      </div>
+      <PageWrapper>
+        <div className="min-h-screen flex flex-col items-center justify-center p-4">
+          <InstallPrompt />
+        </div>
+      </PageWrapper>
     );
   }
 

@@ -5,6 +5,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
+import { AnimatePresence } from "framer-motion"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,7 +42,9 @@ export default function RootLayout({
         <Providers>
           <Header />
           <main className="h-[100dvh] pt-16 pb-20 overflow-y-auto">
-            {children}
+            <AnimatePresence mode="wait">
+              {children}
+            </AnimatePresence>
           </main>
           <BottomNav />
         </Providers>
