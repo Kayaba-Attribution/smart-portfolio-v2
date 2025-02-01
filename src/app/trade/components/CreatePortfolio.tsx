@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { X, Plus, Lightbulb, ShieldCheck, Scale, TrendingUp, Flame } from "lucide-react";
+import { X, Plus, Lightbulb, ShieldCheck, Scale, TrendingUp, Flame, AlertCircle } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -37,6 +37,20 @@ import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { parseUnits } from "viem";
 import ERC20_ABI from "@/contracts/artifacts/ERC20_BASE.json";
 import addresses from "@/contracts/addresses.json";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Risk template definitions
 type RiskTemplate = {
@@ -116,6 +130,9 @@ export function CreatePortfolio() {
   const [allowance, setAllowance] = useState<bigint>(0n);
   const { address: userAddress } = useAccount();
   const { writeContractAsync: approveToken } = useWriteContract();
+  const [isAddingToken, setIsAddingToken] = useState(false);
+  const [newToken, setNewToken] = useState({ symbol: "", allocation: 0 });
+  const [totalAllocation, setTotalAllocation] = useState(0);
 
   // Get allowance data
   const { data: allowanceData, refetch: refetchAllowance } = useReadContract({
@@ -157,29 +174,28 @@ export function CreatePortfolio() {
     icon: token.icon,
   }));
 
+  // Update total allocation when tokens change
+  useEffect(() => {
+    const total = customTokens.reduce((sum, token) => sum + token.allocation, 0);
+    setTotalAllocation(total);
+  }, [customTokens]);
+
+  // Update total allocation when new token changes
+  useEffect(() => {
+    const total = customTokens.reduce((sum, token) => sum + token.allocation, 0) + newToken.allocation;
+    setTotalAllocation(total);
+  }, [customTokens, newToken.allocation]);
+
   const handleAddToken = () => {
-    if (customTokens.length < 5) {
-      const newToken = { symbol: "", allocation: 0 };
-      const newTokens = [...customTokens, newToken];
-      
-      // Calculate equal distribution
-      const equalShare = Math.floor(100 / newTokens.length);
-      const totalEqualShares = equalShare * newTokens.length;
-      const remainder = 100 - totalEqualShares;
-      
-      newTokens.forEach((token, index) => {
-        token.allocation = equalShare;
-      });
-      
-      // Distribute remainder if any
-      if (remainder > 0) {
-        for (let i = 0; i < remainder; i++) {
-          newTokens[i].allocation += 1;
-        }
-      }
-      
-      setCustomTokens(newTokens);
-    }
+    if (!newToken.symbol || customTokens.length >= 5) return;
+    
+    const totalWithNew = totalAllocation;
+    if (totalWithNew > 100) return;
+    
+    const updatedTokens = [...customTokens, newToken];
+    setCustomTokens(updatedTokens);
+    setNewToken({ symbol: "", allocation: 0 });
+    setIsAddingToken(false);
   };
 
   const handleRemoveToken = (index: number) => {
@@ -355,52 +371,22 @@ export function CreatePortfolio() {
           
           <div className="space-y-4">
             {customTokens.map((token, index) => (
-              <div key={index} className="flex items-center gap-4">
-                <Select
-                  value={token.symbol}
-                  onValueChange={(value) => {
-                    const newTokens = [...customTokens];
-                    newTokens[index].symbol = value;
-                    setCustomTokens(newTokens);
-                  }}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select token" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTokens
-                      .filter(t => !customTokens.some((ct, i) => i !== index && ct.symbol === t.symbol))
-                      .map((t) => (
-                        <SelectItem key={t.symbol} value={t.symbol}>
-                          <span className="flex items-center gap-2">
-                            {t.icon ? (
-                              <Image
-                                src={t.icon}
-                                alt={t.name}
-                                width={16}
-                                height={16}
-                                className="h-4 w-4"
-                              />
-                            ) : (
-                              <div className="h-4 w-4 bg-muted rounded-full flex items-center justify-center text-xs">
-                                {t.symbol[0]}
-                              </div>
-                            )}
-                            {t.name}
-                          </span>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex-1">
-                  <Slider
-                    value={[token.allocation]}
-                    onValueChange={(value) => updateAllocation(index, value[0])}
-                    max={100}
-                    step={1}
-                  />
+              <div key={index} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-2 w-[180px]">
+                  {tokens[token.symbol]?.icon && (
+                    <Image
+                      src={tokens[token.symbol].icon}
+                      alt={token.symbol}
+                      width={24}
+                      height={24}
+                      className="rounded-full"
+                    />
+                  )}
+                  <span className="font-medium">{token.symbol}</span>
                 </div>
-                <div className="w-16 text-right">{token.allocation}%</div>
+                <div className="flex-1 text-right font-medium">
+                  {token.allocation}%
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -411,15 +397,117 @@ export function CreatePortfolio() {
               </div>
             ))}
 
-            <Button
-              onClick={handleAddToken}
-              variant="outline"
-              className="w-full"
-              disabled={customTokens.length >= 5}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Token ({customTokens.length}/5)
-            </Button>
+            <Dialog open={isAddingToken} onOpenChange={setIsAddingToken}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  disabled={customTokens.length >= 5}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Token ({customTokens.length}/5)
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Token</DialogTitle>
+                  <DialogDescription>
+                    Select a token to add to your portfolio
+                  </DialogDescription>
+                </DialogHeader>
+
+                {/* Existing Tokens Display */}
+                {customTokens.length > 0 && (
+                  <div className="py-4 border-y">
+                    <div className="text-sm font-medium mb-2">Current Allocation</div>
+                    <div className="flex flex-wrap gap-2">
+                      {customTokens.map((token) => (
+                        <div
+                          key={token.symbol}
+                          className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded-full text-sm"
+                        >
+                          {tokens[token.symbol]?.icon && (
+                            <Image
+                              src={tokens[token.symbol].icon || ""}
+                              alt={token.symbol}
+                              width={16}
+                              height={16}
+                              className="rounded-full"
+                            />
+                          )}
+                          <span>{token.symbol}</span>
+                          <span className="font-medium">{token.allocation}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-6 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Token</label>
+                    <Select
+                      value={newToken.symbol}
+                      onValueChange={(value) => setNewToken({ ...newToken, symbol: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a token" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableTokens
+                          .filter(t => !customTokens.some(ct => ct.symbol === t.symbol))
+                          .map((t) => (
+                            <SelectItem key={t.symbol} value={t.symbol}>
+                              <span className="flex items-center gap-2">
+                                {t.icon && (
+                                  <Image
+                                    src={t.icon || ""}
+                                    alt={t.name}
+                                    width={16}
+                                    height={16}
+                                    className="rounded-full"
+                                  />
+                                )}
+                                {t.name}
+                              </span>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-sm font-medium">Allocation</label>
+                      <span className={`text-sm ${totalAllocation > 100 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        Total: {totalAllocation}%
+                      </span>
+                    </div>
+                    <Slider
+                      value={[newToken.allocation]}
+                      onValueChange={(value) => setNewToken({ ...newToken, allocation: value[0] })}
+                      max={100}
+                      step={1}
+                      className="py-4"
+                    />
+                    {totalAllocation > 100 && (
+                      <div className="flex items-center gap-2 text-sm text-destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>Total allocation cannot exceed 100%</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button 
+                    className="w-full" 
+                    onClick={handleAddToken}
+                    disabled={!newToken.symbol || totalAllocation > 100}
+                  >
+                    Add Token
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       )}
