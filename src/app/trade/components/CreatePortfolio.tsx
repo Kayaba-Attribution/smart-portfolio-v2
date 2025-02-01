@@ -158,48 +158,117 @@ export function CreatePortfolio() {
   }));
 
   const handleAddToken = () => {
-    if (customTokens.length < availableTokens.length) {
-      setCustomTokens([...customTokens, { symbol: "", allocation: 0 }]);
+    if (customTokens.length < 5) {
+      const newToken = { symbol: "", allocation: 0 };
+      const newTokens = [...customTokens, newToken];
+      
+      // Calculate equal distribution
+      const equalShare = Math.floor(100 / newTokens.length);
+      const totalEqualShares = equalShare * newTokens.length;
+      const remainder = 100 - totalEqualShares;
+      
+      newTokens.forEach((token, index) => {
+        token.allocation = equalShare;
+      });
+      
+      // Distribute remainder if any
+      if (remainder > 0) {
+        for (let i = 0; i < remainder; i++) {
+          newTokens[i].allocation += 1;
+        }
+      }
+      
+      setCustomTokens(newTokens);
     }
   };
 
   const handleRemoveToken = (index: number) => {
-    setCustomTokens(customTokens.filter((_, i) => i !== index));
+    const newTokens = customTokens.filter((_, i) => i !== index);
+    
+    if (newTokens.length > 0) {
+      // Recalculate allocations
+      const equalShare = Math.floor(100 / newTokens.length);
+      const totalEqualShares = equalShare * newTokens.length;
+      const remainder = 100 - totalEqualShares;
+      
+      newTokens.forEach((token) => {
+        token.allocation = equalShare;
+      });
+      
+      // Distribute remainder if any
+      for (let i = 0; i < remainder; i++) {
+        newTokens[i].allocation += 1;
+      }
+    }
+    
+    setCustomTokens(newTokens);
   };
 
   const updateAllocation = (index: number, value: number) => {
     const newTokens = [...customTokens];
+    const oldAllocation = newTokens[index].allocation;
+    const difference = value - oldAllocation;
+    
+    // Don't proceed if trying to set below 0 or above 100
+    if (value < 0 || value > 100) return;
+    
+    // Calculate total allocation excluding current token
+    const totalOthers = newTokens.reduce((sum, token, idx) => 
+      idx !== index ? sum + token.allocation : sum, 0);
+    
+    // Don't proceed if this would make total allocation exceed 100
+    if (totalOthers + value > 100) return;
+    
+    // Update current token allocation
     newTokens[index].allocation = value;
+    
+    // Distribute remaining percentage among other tokens proportionally
+    const remaining = 100 - value;
+    if (remaining > 0 && newTokens.length > 1) {
+      const otherTokens = newTokens.filter((_, idx) => idx !== index);
+      const totalOtherAllocations = otherTokens.reduce((sum, token) => sum + token.allocation, 0);
+      
+      newTokens.forEach((token, idx) => {
+        if (idx !== index) {
+          if (totalOtherAllocations === 0) {
+            // If other allocations are 0, distribute equally
+            token.allocation = remaining / (newTokens.length - 1);
+          } else {
+            // Otherwise, distribute proportionally
+            token.allocation = (token.allocation / totalOtherAllocations) * remaining;
+          }
+        }
+      });
+    }
+    
     setCustomTokens(newTokens);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Info Message */}
       {showInfo && (
-        <Card className="bg-muted/50">
-          <CardContent className="pt-6 relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 top-4"
-              onClick={() => setShowInfo(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-            <div className="flex gap-3 items-center">
-              <Lightbulb className="h-6 w-6 flex-shrink-0" />
-              <div className="space-y-1">
-                <p className="font-medium">Create Your Investment Portfolio</p>
-                <p className="text-sm text-muted-foreground">
-                  Choose a pre-made risk template or create your own custom mix.
-                  Set your investment amount and we'll handle the token swaps
-                  automatically.
-                </p>
-              </div>
+        <div className="bg-muted/50 p-4 rounded-lg relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-2 top-2"
+            onClick={() => setShowInfo(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <div className="flex gap-3 items-center">
+            <Lightbulb className="h-6 w-6 flex-shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium">Create Your Investment Portfolio</p>
+              <p className="text-sm text-muted-foreground">
+                Choose a pre-made risk template or create your own custom mix.
+                Set your investment amount and we&apos;ll handle the token swaps
+                automatically.
+              </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Mode Selection */}
@@ -207,12 +276,14 @@ export function CreatePortfolio() {
         <Button
           variant={mode === "template" ? "default" : "outline"}
           onClick={() => setMode("template")}
+          className="flex-1"
         >
           Risk Templates
         </Button>
         <Button
           variant={mode === "custom" ? "default" : "outline"}
           onClick={() => setMode("custom")}
+          className="flex-1"
         >
           Custom Mix
         </Button>
@@ -220,77 +291,69 @@ export function CreatePortfolio() {
 
       {/* Template Mode */}
       {mode === "template" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Select Risk Template</CardTitle>
-            <CardDescription>
-              Choose a pre-defined portfolio strategy
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(RISK_TEMPLATES).map(([key, template]) => {
-                const IconComponent = TEMPLATE_ICONS[key as keyof typeof TEMPLATE_ICONS];
-                return (
-                  <div
-                    key={key}
-                    className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all hover:border-primary ${
-                      selectedTemplate === key
-                        ? "border-primary bg-primary/5"
-                        : "border-muted"
-                    }`}
-                    onClick={() => setSelectedTemplate(key)}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
-                        <IconComponent className="w-8 h-8" />
-                      </div>
-                      <div className="space-y-1 flex-1">
-                        <h3 className="font-medium">{template.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {template.description}
-                        </p>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {Object.entries(template.allocation).map(([token, percentage]) => (
-                            <div
-                              key={token}
-                              className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-full"
-                            >
-                              {tokens[token]?.icon && (
-                                <Image
-                                  src={tokens[token].icon}
-                                  alt={token}
-                                  width={12}
-                                  height={12}
-                                  className="rounded-full"
-                                />
-                              )}
-                              <span>
-                                {token} {percentage}%
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Select Risk Template</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(RISK_TEMPLATES).map(([key, template]) => {
+              const IconComponent = TEMPLATE_ICONS[key as keyof typeof TEMPLATE_ICONS];
+              return (
+                <div
+                  key={key}
+                  className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all hover:border-primary ${
+                    selectedTemplate === key
+                      ? "border-primary bg-primary/5"
+                      : "border-muted"
+                  }`}
+                  onClick={() => setSelectedTemplate(key)}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
+                      <IconComponent className="w-8 h-8" />
+                    </div>
+                    <div className="space-y-1 flex-1">
+                      <h3 className="font-medium">{template.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {template.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {Object.entries(template.allocation).map(([token, percentage]) => (
+                          <div
+                            key={token}
+                            className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-full"
+                          >
+                            {tokens[token]?.icon && (
+                              <Image
+                                src={tokens[token].icon}
+                                alt={token}
+                                width={12}
+                                height={12}
+                                className="rounded-full"
+                              />
+                            )}
+                            <span>
+                              {token} {percentage}%
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Custom Mode */}
       {mode === "custom" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Custom Portfolio</CardTitle>
-            <CardDescription>
-              Select tokens and allocate percentages
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Create Custom Portfolio</h2>
+            <p className="text-sm text-muted-foreground">Select up to 5 tokens</p>
+          </div>
+          
+          <div className="space-y-4">
             {customTokens.map((token, index) => (
               <div key={index} className="flex items-center gap-4">
                 <Select
@@ -305,26 +368,28 @@ export function CreatePortfolio() {
                     <SelectValue placeholder="Select token" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableTokens.map((t) => (
-                      <SelectItem key={t.symbol} value={t.symbol}>
-                        <span className="flex items-center gap-2">
-                          {t.icon ? (
-                            <Image
-                              src={t.icon}
-                              alt={t.name}
-                              width={16}
-                              height={16}
-                              className="h-4 w-4"
-                            />
-                          ) : (
-                            <div className="h-4 w-4 bg-muted rounded-full flex items-center justify-center text-xs">
-                              {t.symbol[0]}
-                            </div>
-                          )}
-                          {t.name}
-                        </span>
-                      </SelectItem>
-                    ))}
+                    {availableTokens
+                      .filter(t => !customTokens.some((ct, i) => i !== index && ct.symbol === t.symbol))
+                      .map((t) => (
+                        <SelectItem key={t.symbol} value={t.symbol}>
+                          <span className="flex items-center gap-2">
+                            {t.icon ? (
+                              <Image
+                                src={t.icon}
+                                alt={t.name}
+                                width={16}
+                                height={16}
+                                className="h-4 w-4"
+                              />
+                            ) : (
+                              <div className="h-4 w-4 bg-muted rounded-full flex items-center justify-center text-xs">
+                                {t.symbol[0]}
+                              </div>
+                            )}
+                            {t.name}
+                          </span>
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <div className="flex-1">
@@ -350,44 +415,38 @@ export function CreatePortfolio() {
               onClick={handleAddToken}
               variant="outline"
               className="w-full"
-              disabled={customTokens.length >= availableTokens.length}
+              disabled={customTokens.length >= 5}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Add Token
+              Add Token ({customTokens.length}/5)
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Common Footer */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <Input
-                  type="number"
-                  placeholder="Enter amount in USDT"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-              </div>
-              {allowance === 0n ? (
-                <Button 
-                  className="w-[200px]"
-                  onClick={handleApprove}
-                >
-                  Approve USDC Spending
-                </Button>
-              ) : (
-                <Button className="w-[200px]">
-                  Create Portfolio
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Footer */}
+      <div className="flex items-center gap-4 pt-4 border-t">
+        <div className="flex-1">
+          <Input
+            type="number"
+            placeholder="Enter amount in USDC"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+        </div>
+        {allowance === BigInt(0) ? (
+          <Button 
+            className="w-[200px]"
+            onClick={handleApprove}
+          >
+            Approve USDC Spending
+          </Button>
+        ) : (
+          <Button className="w-[200px]">
+            Create Portfolio
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
