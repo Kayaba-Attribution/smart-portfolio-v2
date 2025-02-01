@@ -5,6 +5,7 @@
 ├── components.json
 ├── docs
 │   ├── mission.md
+│   ├── PortfolioPage.md
 │   ├── tree.md
 │   └── UPDATES.md
 ├── eslint.config.mjs
@@ -34,15 +35,23 @@
 │   │       └── page.tsx
 │   ├── components
 │   │   ├── BottomNav.tsx
+│   │   ├── Complex_deprecated_PortfolioChart.tsx
 │   │   ├── Faucet.tsx
 │   │   ├── Header.tsx
 │   │   ├── PageWrapper.tsx
+│   │   ├── PortfolioChart.tsx
 │   │   ├── providers.tsx
+│   │   ├── TokenBalanceDisplay.tsx
 │   │   └── ui
 │   │       ├── alert.tsx
 │   │       ├── button.tsx
 │   │       ├── card.tsx
-│   │       └── input.tsx
+│   │       ├── chart.tsx
+│   │       ├── input.tsx
+│   │       ├── progress.tsx
+│   │       ├── select.tsx
+│   │       ├── skeleton.tsx
+│   │       └── table.tsx
 │   ├── contexts
 │   │   ├── AccountContext.tsx
 │   │   ├── PortfolioContext.tsx
@@ -55,4 +64,4 @@
 ├── tailwind.config.ts
 └── tsconfig.json
 
-14 directories, 41 files
+14 directories, 50 files

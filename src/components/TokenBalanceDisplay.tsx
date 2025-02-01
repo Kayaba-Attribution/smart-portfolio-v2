@@ -1,5 +1,5 @@
 import { useTokenBalances } from "@/contexts/TokenBalanceContext";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
 import Image from "next/image";
 
@@ -13,79 +13,62 @@ export function TokenBalanceDisplay() {
   }, 0);
 
   return (
-    <Card className="w-full">
-      <CardContent>
-        <div className="relative overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs uppercase text-muted-foreground">
-              <tr>
-                <th scope="col" className="px-4 py-3">Asset</th>
-                <th scope="col" className="px-4 py-3 text-right">Balance</th>
-                <th scope="col" className="px-4 py-3 text-right">Value</th>
-                <th scope="col" className="px-4 py-3 text-right">%</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-muted/20">
-              {Object.entries(tokens).map(([symbol, token]) => {
-                const balance = balances[symbol] || "0";
-                const dummyPrice = symbol === 'USDC' ? 1 : symbol === 'WBTC' ? 40000 : 2000;
-                const value = parseFloat(balance) * dummyPrice;
-                const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
+    <div className="space-y-3">
+      {Object.entries(tokens).map(([symbol, token]) => {
+        const balance = balances[symbol] || "0";
+        const dummyPrice = symbol === 'USDC' ? 1 : symbol === 'WBTC' ? 40000 : 2000;
+        const value = parseFloat(balance) * dummyPrice;
+        const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
 
-                return (
-                  <tr key={symbol} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="relative w-8 h-8">
-                          {token.icon ? (
-                            <Image
-                              src={token.icon}
-                              alt={token.name}
-                              fill
-                              className="rounded-full"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                              {symbol[0]}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{symbol}</span>
-                          <span className="text-xs text-muted-foreground">{token.name}</span>
-                        </div>
+        return (
+          <Card key={symbol} className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10">
+                    {token.icon ? (
+                      <Image
+                        src={token.icon}
+                        alt={token.name}
+                        fill
+                        className="rounded-full"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        {symbol[0]}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {isLoading ? (
-                        <Skeleton className="h-4 w-20 ml-auto" />
-                      ) : (
-                        <span>{parseFloat(balance).toFixed(2)}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {isLoading ? (
-                        <Skeleton className="h-4 w-24 ml-auto" />
-                      ) : (
-                        <span>
-                          ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {isLoading ? (
-                        <Skeleton className="h-4 w-12 ml-auto" />
-                      ) : (
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{symbol}</span>
+                    <span className="text-xs text-muted-foreground">{token.name}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end">
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-20 mt-1" />
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium">
+                        ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </span>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{parseFloat(balance).toFixed(4)}</span>
+                        <span>·</span>
                         <span>{percentage.toFixed(1)}%</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
   );
 } 
