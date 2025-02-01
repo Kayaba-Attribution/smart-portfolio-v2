@@ -1,66 +1,64 @@
 "use client";
 
+import { useState } from "react";
 import { PageWrapper } from "@/components/PageWrapper";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CreatePortfolio } from "./components/CreatePortfolio";
+import { Button } from "@/components/ui/button";
+import { ArrowLeftRight, PieChart } from "lucide-react";
 
 export default function TradePage() {
+  const [mode, setMode] = useState<"portfolio" | "swap">("portfolio");
+
   return (
     <PageWrapper>
-      <Tabs defaultValue="swap" className="w-full mx-auto">
-        <div className="border-b">
-          <TabsList className="h-16">
-            <TabsTrigger value="swap" className="flex-1 text-lg data-[state=active]:bg-background">
-              <span className="flex items-center gap-2">
-                Swap Tokens <span className="text-xl">🔄</span>
-              </span>
-            </TabsTrigger>
-            <TabsTrigger value="portfolio" className="flex-1 text-lg data-[state=active]:bg-background">
-              <span className="flex items-center gap-2">
-                Create Portfolio <span className="text-xl">📊</span>
-              </span>
-            </TabsTrigger>
-          </TabsList>
+      {/* Navigation */}
+      <div className="w-full border-b">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="flex w-full">
+            <Button
+              variant="ghost"
+              className={`flex-1 flex items-center justify-center gap-2 py-6 rounded-none relative ${
+                mode === "portfolio"
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              }`}
+              onClick={() => setMode("portfolio")}
+            >
+              <PieChart className="h-5 w-5" />
+              Create Portfolio
+              {mode === "portfolio" && (
+                <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-primary rounded-t-full" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              className={`flex-1 flex items-center justify-center gap-2 py-6 rounded-none relative ${
+                mode === "swap"
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              }`}
+              onClick={() => setMode("swap")}
+            >
+              <ArrowLeftRight className="h-5 w-5" />
+              Swap Tokens
+              {mode === "swap" && (
+                <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-primary rounded-t-full" />
+              )}
+            </Button>
+          </div>
         </div>
+      </div>
 
-        <TabsContent value="swap" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Swap Tokens</CardTitle>
-              <CardDescription>
-                Quick and easy token swaps with best price routing
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                Swap interface coming soon
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="portfolio" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Create Portfolio</CardTitle>
-              <CardDescription>
-                AI-powered portfolio creation and management tools
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                Portfolio creation interface coming soon
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Content */}
+      <div className="max-w-[1200px] mx-auto p-6">
+        {mode === "portfolio" ? (
+          <CreatePortfolio />
+        ) : (
+          <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+            Swap interface coming soon
+          </div>
+        )}
+      </div>
     </PageWrapper>
   );
 }
