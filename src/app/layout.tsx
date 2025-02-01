@@ -30,9 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={geistSans.variable}>
+    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} dark`}>
       <body 
-        className="min-h-screen bg-background overflow-x-hidden overscroll-y-none"
         style={{ 
           position: 'fixed',
           width: '100%',

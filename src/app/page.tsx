@@ -19,13 +19,11 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Faucet } from "../components/Faucet";
-import { useAccount } from "wagmi";
 import { PageWrapper } from "@/components/PageWrapper";
 import { TokenBalanceDisplay } from "@/components/TokenBalanceDisplay";
 import { useTokenBalances } from "@/contexts/TokenBalanceContext";
-import { Progress } from "@/components/ui/progress";
 import { PortfolioChart } from "@/components/PortfolioChart";
-import { MotionWrapper } from "@/components/MotionWrapper";
+import { LoadingAnimation } from "@/components/LoadingAnimation";
 
 // Add the URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -204,7 +202,7 @@ const PORTFOLIO_STATS = {
 };
 
 function PortfolioOverview() {
-  const { balances, tokens, refreshBalances, isLoading } = useTokenBalances();
+  const { balances, refreshBalances, isLoading } = useTokenBalances();
 
   // Calculate total portfolio value
   const totalValue = Object.entries(balances).reduce((acc, [symbol, balance]) => {
@@ -299,12 +297,21 @@ function PortfolioOverview() {
 }
 
 export default function Page() {
-  const { address } = useAccount();
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsStandalone(window.matchMedia("(display-mode: standalone)").matches);
+    // Simulate loading time
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, []);
+
+  if (isLoading) {
+    return <LoadingAnimation />;
+  }
 
   if (!isStandalone) {
     return (
