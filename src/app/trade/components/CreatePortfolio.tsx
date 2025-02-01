@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -33,6 +33,10 @@ import {
 } from "lucide-react";
 import { useTokenBalances, TOKENS } from "@/contexts/TokenBalanceContext";
 import Image from "next/image";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { parseUnits } from "viem";
+import ERC20_ABI from "@/contracts/artifacts/ERC20_BASE.json";
+import addresses from "@/contracts/addresses.json";
 
 // Risk template definitions
 type RiskTemplate = {
@@ -109,6 +113,42 @@ export function CreatePortfolio() {
   >([]);
   const [showInfo, setShowInfo] = useState(true);
   const { tokens } = useTokenBalances();
+  const [allowance, setAllowance] = useState<bigint>(0n);
+  const { address: userAddress } = useAccount();
+  const { writeContractAsync: approveToken } = useWriteContract();
+
+  // Get allowance data
+  const { data: allowanceData, refetch: refetchAllowance } = useReadContract({
+    address: addresses.tokens.USDC as `0x${string}`,
+    abi: ERC20_ABI.abi,
+    functionName: "allowance",
+    args: userAddress ? [userAddress, addresses.core.SmartPortfolio as `0x${string}`] : undefined,
+  });
+
+  // Update allowance when data changes
+  useEffect(() => {
+    if (allowanceData !== undefined) {
+      setAllowance(allowanceData as bigint);
+    }
+  }, [allowanceData]);
+
+  // Handle token approval
+  const handleApprove = async () => {
+    try {
+      await approveToken({
+        address: addresses.tokens.USDC as `0x${string}`,
+        abi: ERC20_ABI.abi,
+        functionName: "approve",
+        args: [
+          addresses.core.SmartPortfolio as `0x${string}`,
+          parseUnits("999999999", 18), // Max approval amount
+        ],
+      });
+      await refetchAllowance();
+    } catch (error) {
+      console.error("Error approving token:", error);
+    }
+  };
 
   // Convert tokens from context to the format we need
   const availableTokens = Object.entries(tokens).map(([symbol, token]) => ({
@@ -332,7 +372,18 @@ export function CreatePortfolio() {
                   onChange={(e) => setAmount(e.target.value)}
                 />
               </div>
-              <Button className="w-[200px]">Create Portfolio</Button>
+              {allowance === 0n ? (
+                <Button 
+                  className="w-[200px]"
+                  onClick={handleApprove}
+                >
+                  Approve USDC Spending
+                </Button>
+              ) : (
+                <Button className="w-[200px]">
+                  Create Portfolio
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>

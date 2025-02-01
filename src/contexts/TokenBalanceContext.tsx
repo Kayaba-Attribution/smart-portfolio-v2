@@ -4,6 +4,8 @@ import { createContext, useContext, useState, useCallback, ReactNode, useEffect 
 import { useAccount, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import addresses from "../contracts/addresses.json";
+import ERC20_ABI from "../contracts/artifacts/ERC20_BASE.json";
+
 
 // Update Token interface
 interface Token {
@@ -88,15 +90,6 @@ export const TOKENS: Record<string, Token> = {
   },
 };
 
-const ERC20_ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 interface TokenBalances {
   [symbol: string]: string;
@@ -121,7 +114,7 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
   const { data: tokenBalances, refetch: refetchAll } = useReadContracts({
     contracts: Object.values(TOKENS).map((token) => ({
       address: token.address,
-      abi: ERC20_ABI,
+      abi: ERC20_ABI.abi as [],
       functionName: "balanceOf",
       args: address ? [address as `0x${string}`] : undefined,
     })),
