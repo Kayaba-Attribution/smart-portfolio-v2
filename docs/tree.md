@@ -41,6 +41,7 @@
 │   │   ├── Complex_deprecated_PortfolioChart.tsx
 │   │   ├── Faucet.tsx
 │   │   ├── Header.tsx
+│   │   ├── LoadingAnimation.tsx
 │   │   ├── MotionWrapper.tsx
 │   │   ├── PageWrapper.tsx
 │   │   ├── PortfolioChart.tsx
@@ -71,4 +72,4 @@
 ├── tailwind.config.ts
 └── tsconfig.json
 
-15 directories, 56 files
+15 directories, 57 files

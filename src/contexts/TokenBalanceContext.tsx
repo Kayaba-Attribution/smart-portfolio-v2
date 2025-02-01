@@ -15,7 +15,7 @@ interface Token {
 }
 
 // Known tokens with metadata
-const TOKENS: Record<string, Token> = {
+export const TOKENS: Record<string, Token> = {
   USDC: {
     address: addresses.tokens.USDC as `0x${string}`,
     symbol: "USDC",

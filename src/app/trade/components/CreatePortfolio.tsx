@@ -18,72 +18,107 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Lightbulb, ShieldCheck, Scale, TrendingUp, Flame } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { 
-  Lightbulb,
+import {
   Bitcoin,
   Coins,
   DollarSign,
   Link as LinkIcon,
   Lock,
-  Scale,
-  Rocket,
 } from "lucide-react";
+import { useTokenBalances, TOKENS } from "@/contexts/TokenBalanceContext";
+import Image from "next/image";
 
 // Risk template definitions
-const RISK_TEMPLATES = {
+type RiskTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  allocation: { [K in keyof typeof TOKENS]?: number };
+};
+
+// Risk template definitions
+const RISK_TEMPLATES: Record<string, RiskTemplate> = {
   low: {
+    id: "low",
     name: "Low Risk",
-    description: "Stable Portfolio with 60% Stablecoins, 20% BTC, 20% LINK",
+    description:
+      "A stable portfolio with 60% Stablecoins, 20% BTC, and 20% LINK.",
     allocation: {
       USDC: 60,
       WBTC: 20,
       LINK: 20,
     },
   },
-  medium: {
-    name: "Medium Risk",
-    description: "Balanced Portfolio with 40% Stablecoins, 30% BTC, 30% ETH",
+  balanced: {
+    id: "balanced",
+    name: "Balanced Growth",
+    description:
+      "A mix of stable assets and growth tokens: 40% Stablecoins, 30% BTC, 30% ETH.",
     allocation: {
       USDC: 40,
       WBTC: 30,
-      ETH: 30,
+      WBASE: 30,
     },
   },
   high: {
-    name: "High Risk",
-    description: "Growth Portfolio with 20% Stablecoins, 40% BTC, 40% ALTs",
+    id: "high",
+    name: "High Growth",
+    description:
+      "A growth-focused portfolio with 20% Stablecoins, 40% BTC, and 40% Altcoins.",
     allocation: {
       USDC: 20,
       WBTC: 40,
-      ETH: 20,
+      WBASE: 20,
       LINK: 20,
+    },
+  },
+  degen: {
+    id: "degen",
+    name: "Degen Play",
+    description:
+      "A high-risk, high-reward portfolio with meme coins and minimal stability.",
+    allocation: {
+      PEPE: 30,
+      SHIB: 30,
+      DOGE: 20,
+      FLOKI: 20,
     },
   },
 };
 
-// Available tokens for custom portfolio
-const AVAILABLE_TOKENS = [
-  { symbol: "WBTC", name: "Bitcoin", icon: Bitcoin },
-  { symbol: "ETH", name: "Ethereum", icon: Coins },
-  { symbol: "USDC", name: "USD Coin", icon: DollarSign },
-  { symbol: "LINK", name: "Chainlink", icon: LinkIcon },
-];
+// Update template icons mapping to use Lucide components
+const TEMPLATE_ICONS = {
+  low: ShieldCheck,
+  balanced: Scale,
+  high: TrendingUp,
+  degen: Flame,
+} as const;
 
 export function CreatePortfolio() {
   const [mode, setMode] = useState<"template" | "custom">("template");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [amount, setAmount] = useState("");
-  const [customTokens, setCustomTokens] = useState<Array<{ symbol: string; allocation: number }>>([]);
+  const [customTokens, setCustomTokens] = useState<
+    Array<{ symbol: string; allocation: number }>
+  >([]);
   const [showInfo, setShowInfo] = useState(true);
+  const { tokens } = useTokenBalances();
+
+  // Convert tokens from context to the format we need
+  const availableTokens = Object.entries(tokens).map(([symbol, token]) => ({
+    symbol,
+    name: token.name,
+    icon: token.icon,
+  }));
 
   const handleAddToken = () => {
-    if (customTokens.length < AVAILABLE_TOKENS.length) {
+    if (customTokens.length < availableTokens.length) {
       setCustomTokens([...customTokens, { symbol: "", allocation: 0 }]);
     }
   };
@@ -117,7 +152,9 @@ export function CreatePortfolio() {
               <div className="space-y-1">
                 <p className="font-medium">Create Your Investment Portfolio</p>
                 <p className="text-sm text-muted-foreground">
-                  Choose a pre-made risk template or create your own custom mix. Set your investment amount and we'll handle the token swaps automatically.
+                  Choose a pre-made risk template or create your own custom mix.
+                  Set your investment amount and we'll handle the token swaps
+                  automatically.
                 </p>
               </div>
             </div>
@@ -151,42 +188,55 @@ export function CreatePortfolio() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Select onValueChange={setSelectedTemplate}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a template" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">
-                  <span className="flex items-center gap-2">
-                    Low Risk <Lock className="h-4 w-4" />
-                  </span>
-                </SelectItem>
-                <SelectItem value="medium">
-                  <span className="flex items-center gap-2">
-                    Medium Risk <Scale className="h-4 w-4" />
-                  </span>
-                </SelectItem>
-                <SelectItem value="high">
-                  <span className="flex items-center gap-2">
-                    High Risk <Rocket className="h-4 w-4" />
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            {selectedTemplate && (
-              <Collapsible>
-                <CollapsibleTrigger className="flex w-full justify-between p-4 bg-muted rounded-lg">
-                  <span className="flex items-center gap-2">
-                    <Lightbulb className="h-4 w-4" />
-                    {RISK_TEMPLATES[selectedTemplate as keyof typeof RISK_TEMPLATES].name}
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="p-4 bg-muted/50 rounded-lg mt-2">
-                  {RISK_TEMPLATES[selectedTemplate as keyof typeof RISK_TEMPLATES].description}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.entries(RISK_TEMPLATES).map(([key, template]) => {
+                const IconComponent = TEMPLATE_ICONS[key as keyof typeof TEMPLATE_ICONS];
+                return (
+                  <div
+                    key={key}
+                    className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all hover:border-primary ${
+                      selectedTemplate === key
+                        ? "border-primary bg-primary/5"
+                        : "border-muted"
+                    }`}
+                    onClick={() => setSelectedTemplate(key)}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
+                        <IconComponent className="w-8 h-8" />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <h3 className="font-medium">{template.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {template.description}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {Object.entries(template.allocation).map(([token, percentage]) => (
+                            <div
+                              key={token}
+                              className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-full"
+                            >
+                              {tokens[token]?.icon && (
+                                <Image
+                                  src={tokens[token].icon}
+                                  alt={token}
+                                  width={12}
+                                  height={12}
+                                  className="rounded-full"
+                                />
+                              )}
+                              <span>
+                                {token} {percentage}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -215,10 +265,23 @@ export function CreatePortfolio() {
                     <SelectValue placeholder="Select token" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AVAILABLE_TOKENS.map((t) => (
+                    {availableTokens.map((t) => (
                       <SelectItem key={t.symbol} value={t.symbol}>
                         <span className="flex items-center gap-2">
-                          <t.icon className="h-4 w-4" /> {t.name}
+                          {t.icon ? (
+                            <Image
+                              src={t.icon}
+                              alt={t.name}
+                              width={16}
+                              height={16}
+                              className="h-4 w-4"
+                            />
+                          ) : (
+                            <div className="h-4 w-4 bg-muted rounded-full flex items-center justify-center text-xs">
+                              {t.symbol[0]}
+                            </div>
+                          )}
+                          {t.name}
                         </span>
                       </SelectItem>
                     ))}
@@ -242,12 +305,12 @@ export function CreatePortfolio() {
                 </Button>
               </div>
             ))}
-            
+
             <Button
               onClick={handleAddToken}
               variant="outline"
               className="w-full"
-              disabled={customTokens.length >= AVAILABLE_TOKENS.length}
+              disabled={customTokens.length >= availableTokens.length}
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Token
@@ -276,4 +339,4 @@ export function CreatePortfolio() {
       </Card>
     </div>
   );
-} 
+}
