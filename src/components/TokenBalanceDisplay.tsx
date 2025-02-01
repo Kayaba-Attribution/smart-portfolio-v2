@@ -1,74 +1,81 @@
+"use client";
+
+import { useState } from "react";
 import { useTokenBalances } from "@/contexts/TokenBalanceContext";
-import { Card, CardContent } from "./ui/card";
-import { Skeleton } from "./ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import Image from "next/image";
 
 export function TokenBalanceDisplay() {
-  const { balances, tokens, isLoading } = useTokenBalances();
+  const { tokens, getSortedTokenBalances } = useTokenBalances();
+  const [showAll, setShowAll] = useState(false);
 
-  // Calculate total portfolio value
-  const totalValue = Object.entries(balances).reduce((acc, [symbol, balance]) => {
-    const dummyPrice = symbol === 'USDC' ? 1 : symbol === 'WBTC' ? 40000 : 2000;
-    return acc + (parseFloat(balance) * dummyPrice);
-  }, 0);
+  const sortedBalances = getSortedTokenBalances();
+  const displayBalances = showAll ? sortedBalances : sortedBalances.slice(0, 5);
 
   return (
-    <div className="space-y-3">
-      {Object.entries(tokens).map(([symbol, token]) => {
-        const balance = balances[symbol] || "0";
-        const dummyPrice = symbol === 'USDC' ? 1 : symbol === 'WBTC' ? 40000 : 2000;
-        const value = parseFloat(balance) * dummyPrice;
-        const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
-
-        return (
-          <Card key={symbol} className="overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative w-10 h-10">
-                    {token.icon ? (
-                      <Image
-                        src={token.icon}
-                        alt={token.name}
-                        fill
-                        className="rounded-full"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        {symbol[0]}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{symbol}</span>
-                    <span className="text-xs text-muted-foreground">{token.name}</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end">
-                  {isLoading ? (
-                    <>
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-20 mt-1" />
-                    </>
+    <Card>
+      <CardHeader>
+        <CardTitle>Token Balances</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {displayBalances.map(({ symbol, balance, value }) => (
+            <div
+              key={symbol}
+              className="flex items-center justify-between py-2 border-b last:border-0"
+            >
+              <div className="flex items-center gap-3">
+                <div className="relative w-8 h-8">
+                  {tokens[symbol].icon ? (
+                    <Image
+                      src={tokens[symbol].icon}
+                      alt={symbol}
+                      fill
+                      className="rounded-full"
+                    />
                   ) : (
-                    <>
-                      <span className="font-medium">
-                        ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </span>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{parseFloat(balance).toFixed(4)}</span>
-                        <span>·</span>
-                        <span>{percentage.toFixed(1)}%</span>
-                      </div>
-                    </>
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                      {symbol[0]}
+                    </div>
                   )}
                 </div>
+                <div>
+                  <div className="font-medium">{tokens[symbol].name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {parseFloat(balance).toFixed(4)} {symbol}
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
+              <div className="text-right">
+                <div className="font-medium">
+                  ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {sortedBalances.length > 5 && (
+            <Button
+              variant="ghost"
+              className="w-full mt-2"
+              onClick={() => setShowAll(!showAll)}
+            >
+              {showAll ? (
+                <>
+                  Show Less <ChevronUp className="ml-2 h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  See All ({sortedBalances.length - 5} more){" "}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 } 

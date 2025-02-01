@@ -6,6 +6,7 @@
 ├── docs
 │   ├── mission.md
 │   ├── PortfolioPage.md
+│   ├── TradePage.md
 │   ├── tree.md
 │   └── UPDATES.md
 ├── eslint.config.mjs
@@ -32,12 +33,15 @@
 │   │   ├── settings
 │   │   │   └── page.tsx
 │   │   └── trade
+│   │       ├── components
+│   │       │   └── CreatePortfolio.tsx
 │   │       └── page.tsx
 │   ├── components
 │   │   ├── BottomNav.tsx
 │   │   ├── Complex_deprecated_PortfolioChart.tsx
 │   │   ├── Faucet.tsx
 │   │   ├── Header.tsx
+│   │   ├── MotionWrapper.tsx
 │   │   ├── PageWrapper.tsx
 │   │   ├── PortfolioChart.tsx
 │   │   ├── providers.tsx
@@ -47,11 +51,14 @@
 │   │       ├── button.tsx
 │   │       ├── card.tsx
 │   │       ├── chart.tsx
+│   │       ├── collapsible.tsx
 │   │       ├── input.tsx
 │   │       ├── progress.tsx
 │   │       ├── select.tsx
 │   │       ├── skeleton.tsx
-│   │       └── table.tsx
+│   │       ├── slider.tsx
+│   │       ├── table.tsx
+│   │       └── tabs.tsx
 │   ├── contexts
 │   │   ├── AccountContext.tsx
 │   │   ├── PortfolioContext.tsx
@@ -64,4 +71,4 @@
 ├── tailwind.config.ts
 └── tsconfig.json
 
-14 directories, 50 files
+15 directories, 56 files

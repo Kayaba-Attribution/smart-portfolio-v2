@@ -107,6 +107,7 @@ interface TokenBalanceContextType {
   refreshBalances: () => Promise<void>;
   isLoading: boolean;
   tokens: Record<string, Token>;
+  getSortedTokenBalances: () => { symbol: string; balance: string; value: number }[];
 }
 
 const TokenBalanceContext = createContext<TokenBalanceContextType | undefined>(undefined);
@@ -153,12 +154,41 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
     }
   }, [address, refetchAll]);
 
-  // Add tokens data to context
+  // Add function to get token values (you can replace these dummy prices with real ones later)
+  const getTokenPrice = (symbol: string) => {
+    const dummyPrices: Record<string, number> = {
+      USDC: 1,
+      WBTC: 40000,
+      WBASE: 2000,
+      // Add other token prices as needed
+      XRP: 0.5,
+      UNI: 5,
+      LINK: 15,
+      DOGE: 0.1,
+      SHIB: 0.00001,
+      PEPE: 0.000001,
+      FLOKI: 0.0001,
+    };
+    return dummyPrices[symbol] || 0;
+  };
+
+  const getSortedTokenBalances = useCallback(() => {
+    return Object.entries(balances)
+      .map(([symbol, balance]) => ({
+        symbol,
+        balance,
+        value: parseFloat(balance) * getTokenPrice(symbol),
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [balances]);
+
+  // Update the context value
   const value = {
     balances,
     refreshBalances,
     isLoading,
     tokens: TOKENS,
+    getSortedTokenBalances,
   };
 
   return (
