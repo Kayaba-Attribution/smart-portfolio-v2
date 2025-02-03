@@ -45,7 +45,7 @@ export function Header() {
                 <Name className="sm:block" />
               </div>
             </ConnectWallet>
-            <WalletDropdown>
+            <WalletDropdown className="z-[100]">
               <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
                 <Avatar />
                 <Name />
