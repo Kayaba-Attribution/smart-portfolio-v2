@@ -4,17 +4,30 @@
 │   └── localhost.pem
 ├── components.json
 ├── docs
+│   ├── about.md
 │   ├── mission.md
 │   ├── PortfolioPage.md
 │   ├── TradePage.md
 │   ├── tree.md
-│   └── UPDATES.md
+│   ├── UPDATES.md
+│   └── ZeroDevMigration.md
 ├── eslint.config.mjs
 ├── next.config.ts
 ├── next-env.d.ts
 ├── package.json
 ├── package-lock.json
 ├── postcss.config.mjs
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── SmartPortfolioMobile.png
+│   ├── SP_LOGO.png
+│   ├── SP_ONLY_ICON.png
+│   ├── SP_ONLY_LETTERS.png
+│   ├── sw.js
+│   ├── vercel.svg
+│   └── window.svg
 ├── README.md
 ├── src
 │   ├── abi
@@ -53,6 +66,7 @@
 │   │       ├── card.tsx
 │   │       ├── chart.tsx
 │   │       ├── collapsible.tsx
+│   │       ├── dialog.tsx
 │   │       ├── input.tsx
 │   │       ├── progress.tsx
 │   │       ├── select.tsx
@@ -72,4 +86,4 @@
 ├── tailwind.config.ts
 └── tsconfig.json
 
-15 directories, 57 files
+16 directories, 70 files
