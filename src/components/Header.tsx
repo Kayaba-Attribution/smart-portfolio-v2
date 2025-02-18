@@ -5,11 +5,15 @@ import { Button } from "./ui/button";
 import Image from "next/image";
 
 export function Header() {
-  const { account, isLoading, createPasskeyAccount } = useAccount();
+  const { account, isLoading, error, createPasskeyAccount } = useAccount();
 
   const handleConnect = async () => {
-    // For now, use a simple username. Later we can add a proper input
-    await createPasskeyAccount("Smart Portfolio User");
+    try {
+      await createPasskeyAccount("Smart Portfolio User");
+      console.log("Account created successfully");
+    } catch (err) {
+      console.error("Failed to create account:", err);
+    }
   };
 
   return (
@@ -25,17 +29,23 @@ export function Header() {
             />
           </div>
 
-          {account ? (
-            <div className="flex items-center gap-2">
-              <div className="text-sm">
-                {account.address.slice(0, 6)}...{account.address.slice(-4)}
+          <div>
+            {error && (
+              <div className="text-red-500 text-sm mr-4">{error.message}</div>
+            )}
+
+            {account ? (
+              <div className="flex items-center gap-2">
+                <div className="text-sm">
+                  {account.address.slice(0, 6)}...{account.address.slice(-4)}
+                </div>
               </div>
-            </div>
-          ) : (
-            <Button onClick={handleConnect} disabled={isLoading}>
-              {isLoading ? "Creating Account..." : "Create Account"}
-            </Button>
-          )}
+            ) : (
+              <Button onClick={handleConnect} disabled={isLoading}>
+                {isLoading ? "Creating Account..." : "Create Account"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

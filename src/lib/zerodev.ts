@@ -1,8 +1,4 @@
-import {
-    createKernelAccount,
-    createKernelAccountClient,
-    createZeroDevPaymasterClient
-} from "@zerodev/sdk";
+import { createZeroDevPaymasterClient } from "@zerodev/sdk";
 import { http, createPublicClient } from "viem";
 import { ZERODEV_CONFIG } from "@/config/zerodev";
 
