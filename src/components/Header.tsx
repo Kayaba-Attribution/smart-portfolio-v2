@@ -9,7 +9,8 @@ export function Header() {
 
   const handleConnect = async () => {
     try {
-      await createPasskeyAccount("Smart Portfolio User");
+      const username = `user_${Date.now()}`;
+      await createPasskeyAccount(username);
       console.log("Account created successfully");
     } catch (err) {
       console.error("Failed to create account:", err);
