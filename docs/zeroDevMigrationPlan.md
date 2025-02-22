@@ -1,4 +1,4 @@
-# ZeroDev Migration Plan
+# ZeroDev Migration Plan - Revised
 
 ## Current Architecture
 - Using OnchainKit for wallet connection and transactions
@@ -7,316 +7,173 @@
 - Manual balance tracking through TokenBalanceContext
 
 ## Migration Goals
-1. Replace OnchainKit with ZeroDev's smart account infrastructure
+1. Replace OnchainKit with ZeroDev's SDK
 2. Create wallet accounts via passkeys:
    - First visit: Create smart account with passkey
    - Return visits: Auto-connect with passkey
-   - Store minimal account info (address only)
 3. Maintain current functionality:
    - Faucet interaction
    - Token balance tracking
 4. Maintain sponsored transactions
-5. Future considerations (not initial scope):
-   - Email collection and recovery
-   - Social login options
-   - Advanced session key management
-
-## Immediate Focus
-
-1. **Header Component Migration**
-   ```typescript
-   // Current (Header.tsx)
-   <ConnectWallet /> // OnchainKit
-
-   // New Implementation
-   const Header = () => {
-     const { createPasskeyAccount, account } = useZeroDev();
-     
-     useEffect(() => {
-       // Auto-connect if account exists
-       if (!account && localStorage.getItem('accountAddress')) {
-         createPasskeyAccount();
-       }
-     }, []);
-
-     return (
-       // New wallet display UI
-       account ? (
-         <AccountInfo address={account.address} />
-       ) : (
-         <CreateAccountButton onClick={createPasskeyAccount} />
-       )
-     );
-   };
-   ```
-
-2. **Faucet Component Migration**
-   ```typescript
-   // Current (Faucet.tsx)
-   <Transaction chainId={BASE_SEPOLIA_CHAIN_ID} calls={[...]} />
-
-   // New Implementation
-   const Faucet = () => {
-     const { kernelClient } = useZeroDev();
-
-     const claimFaucet = async () => {
-       try {
-         const userOpHash = await kernelClient.sendUserOperation({
-           callData: encodeFunctionData({
-             abi: ERC20_FAUCET_ABI,
-             functionName: "claimFaucet",
-           }),
-         });
-         await handleUserOp(userOpHash);
-       } catch (error) {
-         handleError(error);
-       }
-     };
-
-     return (
-       <Button onClick={claimFaucet}>
-         Claim Tokens
-       </Button>
-     );
-   };
-   ```
-
-3. **PWA & Passkey Flow**
-   ```typescript
-   // In page.tsx
-   const HomePage = () => {
-     const { account } = useZeroDev();
-     const [isStandalone, setIsStandalone] = useState(false);
-
-     // Check if PWA and account exists
-     useEffect(() => {
-       const isPWA = window.matchMedia('(display-mode: standalone)').matches;
-       setIsStandalone(isPWA);
-
-       // If PWA but no account, initiate account creation
-       if (isPWA && !account) {
-         createPasskeyAccount();
-       }
-     }, []);
-
-     // Show install prompt if not PWA
-     if (!isStandalone) {
-       return <InstallPrompt />;
-     }
-
-     return <PortfolioView />;
-   };
-   ```
 
 ## Implementation Phases
 
-### Phase 1: Basic Setup & Infrastructure
+### Phase 1: Core SDK Setup
 1. Environment Setup
    ```bash
    # Remove OnchainKit
    npm remove @coinbase/onchainkit
    
-   # Install ZeroDev
-   npm install @zerodev/sdk @zerodev/wallet viem@latest wagmi@latest
+   # Install ZeroDev core packages
+   npm install @zerodev/sdk @zerodev/passkey-validator viem@latest
    ```
 
 2. Configuration
    ```typescript
-   // config/zerodev.ts
+   // src/config/zerodev.ts
+   import { getEntryPoint, KERNEL_V3_1 } from "@zerodev/sdk/constants";
+   
    export const ZERODEV_CONFIG = {
-     projectId: process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID,
-     bundlerUrl: `https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+     projectId: process.env.ZERODEV_PROJECT_ID!,
+     bundlerUrl: process.env.ZERODEV_BUNDLER_URL!,
+     paymasterUrl: process.env.ZERODEV_PAYMASTER_URL!,
+     chain: baseSepolia,
+     entryPoint: getEntryPoint("0.7"),
+     kernelVersion: KERNEL_V3_1,
    };
    ```
 
-3. Setup ZeroDev Project
-   - Create project on ZeroDev dashboard
-   - Configure for Base Sepolia
-   - Setup gas policies for sponsorship
-
-4. Update Provider Structure
+3. Core Client Setup
    ```typescript
-   // Current
-   <OnchainKitProvider>
-     <TokenBalanceProvider>
-       {children}
-     </TokenBalanceProvider>
-   </OnchainKitProvider>
-
-   // New
-   <WagmiConfig config={wagmiConfig}>
-     <ZeroDevProvider projectId={PROJECT_ID}>
-       <TokenBalanceProvider>
-         {children}
-       </TokenBalanceProvider>
-     </ZeroDevProvider>
-   </WagmiConfig>
-   ```
-
-5. Account Address Management
-   ```typescript
-   // Need to handle address changes
-   const { address: smartAccountAddress } = useAccount();
+   // src/lib/zerodev.ts
+   import { 
+     createKernelAccount,
+     createKernelAccountClient,
+     createZeroDevPaymasterClient
+   } from "@zerodev/sdk";
+   import { http, createPublicClient } from "viem";
    
-   // Update TokenBalanceContext to handle smart account addresses
-   useEffect(() => {
-     if (smartAccountAddress) {
-       // Update balances for new address
-       refreshBalances();
-     }
-   }, [smartAccountAddress]);
-   ```
-
-6. Transaction Status Handling
-   ```typescript
-   // Current
-   const handleStatus = async (status: LifecycleStatus) => {
-     if (status.statusName === 'success') {
-       await refreshBalances();
-     }
-   };
-
-   // ZeroDev
-   const handleUserOp = async (hash: string) => {
-     try {
-       const receipt = await kernelClient.waitForUserOperationReceipt({
-         hash,
-         timeout: 30_000,
-       });
-       if (receipt.success) {
-         await refreshBalances();
-       }
-     } catch (error) {
-       // Handle timeout or other errors
-     }
-   };
-   ```
-
-### Phase 2: Core Migration
-1. Passkey Setup
-   ```typescript
-   const createPasskeyAccount = async () => {
-     const account = await createPasskeyAccount({
-       projectId,
-       name: "Smart Portfolio Account",
-     });
-     localStorage.setItem('accountAddress', account.address);
-   };
-   ```
-
-2. Balance Tracking Migration
-   ```typescript
-   // Update TokenBalanceContext to work with smart account
-   const { address } = useZeroDev();
-   
-   useEffect(() => {
-     if (address) {
-       refreshBalances();
-     }
-   }, [address]);
-   ```
-
-3. Faucet Integration
-   ```typescript
-   // Convert current faucet interaction to use ZeroDev
-   const kernelClient = createKernelAccountClient({
-     account,
-     chain,
-     bundlerTransport: http(BUNDLER_RPC),
-     paymaster: zerodevPaymaster,
+   export const publicClient = createPublicClient({
+     chain: ZERODEV_CONFIG.chain,
+     transport: http(ZERODEV_CONFIG.bundlerUrl),
    });
 
-   const claimFaucet = async () => {
-     const userOpHash = await kernelClient.sendUserOperation({
-       callData: encodeFunctionData({
-         abi: ERC20_FAUCET_ABI,
-         functionName: "claimFaucet",
-       }),
-     });
-   };
+   export const paymasterClient = createZeroDevPaymasterClient({
+     chain: ZERODEV_CONFIG.chain,
+     transport: http(ZERODEV_CONFIG.paymasterUrl),
+   });
    ```
 
-4. Transaction Sponsorship Configuration
+### Phase 2: Passkey Implementation
+1. Create Passkey Hook
    ```typescript
-   const sponsorUserOp = async (userOp) => {
-     const sponsored = await kernelClient.sponsorUserOperation({
-       userOp,
-       sponsorshipPolicyId: "sp_default", // Your policy ID
-     });
-     return sponsored;
-   };
+   // src/hooks/usePasskeyAccount.ts
+   import { toPasskeyValidator, WebAuthnMode } from "@zerodev/passkey-validator";
+   
+   export function usePasskeyAccount() {
+     const createAccount = async (username: string) => {
+       const webAuthnKey = await toWebAuthnKey({
+         passkeyName: username,
+         passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
+         mode: WebAuthnMode.Register,
+       });
+
+       const validator = await toPasskeyValidator(publicClient, {
+         webAuthnKey,
+         entryPoint: ZERODEV_CONFIG.entryPoint,
+         kernelVersion: ZERODEV_CONFIG.kernelVersion,
+       });
+
+       return createKernelAccount(publicClient, {
+         plugins: { sudo: validator },
+         entryPoint: ZERODEV_CONFIG.entryPoint,
+         kernelVersion: ZERODEV_CONFIG.kernelVersion,
+       });
+     };
+
+     return { createAccount };
+   }
    ```
 
-5. Enhanced Error Handling
-    ```typescript
-    try {
-      const userOpHash = await kernelClient.sendUserOperation({...});
-    } catch (error) {
-      if (error.code === "PASSKEY_REJECTED") {
-        // User rejected passkey prompt
-      } else if (error.code === "BUNDLER_ERROR") {
-        // Issue with transaction bundling
-      } else if (error.code === "SPONSOR_ERROR") {
-        // Handle sponsorship limit reached
-      }
-    }
-    ```
+### Phase 3: Core Components Migration
 
-6. State Synchronization
-   - Implement optimistic updates
-   - Handle transaction failures
-   - Manage concurrent transactions
+1. Account Provider
+   ```typescript
+   // src/contexts/AccountContext.ts
+   export function AccountProvider({ children }: { children: React.ReactNode }) {
+     const [account, setAccount] = useState<KernelAccount | null>(null);
+     const [client, setClient] = useState<KernelAccountClient | null>(null);
 
-### Phase 4: Essential Features
-1. Transaction Sponsorship
-   - Configure basic gas policies
-   - Implement sponsored transactions
+     // Account creation and management logic
+     return (
+       <AccountContext.Provider value={{ account, client }}>
+         {children}
+       </AccountContext.Provider>
+     );
+   }
+   ```
 
-## Future Scope (Post-Migration)
-1. Account Enhancement
-   - Email collection
-   - Recovery setup
-   - Session key implementation
+2. Transaction Handler
+   ```typescript
+   // src/lib/transactions.ts
+   export async function sendTransaction(
+     client: KernelAccountClient,
+     calls: Call[]
+   ) {
+     const userOpHash = await client.sendUserOperation({
+       callData: await client.account.encodeCalls(calls),
+     });
 
-2. Feature Enhancement
-   - Multi-chain support
-   - Advanced transaction management
-   - Enhanced error recovery
+     return client.waitForUserOperationReceipt({
+       hash: userOpHash,
+     });
+   }
+   ```
+
+### Phase 4: Component Updates
+
+1. Faucet Component
+   ```typescript
+   // src/components/Faucet.tsx
+   export function Faucet() {
+     const { client } = useAccount();
+     
+     const claimFaucet = async () => {
+       if (!client) return;
+       
+       await sendTransaction(client, [{
+         to: addresses.tokens.USDC,
+         data: encodeFunctionData({
+           abi: ERC20_FAUCET_ABI,
+           functionName: "claimFaucet",
+         }),
+       }]);
+     };
+     
+     return <Button onClick={claimFaucet}>Claim Tokens</Button>;
+   }
+   ```
 
 ## Testing Strategy
 
 1. Core Functionality
-   - Passkey creation
-   - Faucet interaction
+   - Passkey creation and recovery
+   - Transaction sending
    - Balance updates
-   - Transaction sponsorship
+   - Gas sponsorship
 
 2. Mobile Testing
    - PWA + Passkey flow
    - Transaction signing
 
-## Migration Risks & Mitigations
-
-1. Risks
-   - User account transition
-   - Mobile browser compatibility
-   - Transaction sponsorship limits
-   - Session key security
-
-2. Mitigations
-   - Implement gradual rollout
-   - Extensive mobile testing
-   - Clear sponsorship monitoring
-   - Strict session key policies
-
 ## Timeline
-1. Phase 1: 1 week
-2. Phase 2: 1 week
-3. Phase 3: 1 week
-4. Phase 4: 1 week
-5. Testing & Refinement: 1 week
+1. Phase 1: 2 days
+2. Phase 2: 2 days
+3. Phase 3: 3 days
+4. Phase 4: 2 days
+5. Testing: 3 days
 
-Total Estimated Time: 5 weeks
+Total Estimated Time: 12 days
 
 ## Critical Considerations
 

@@ -1,65 +1,52 @@
 "use client";
 
-import {
-  ConnectWallet,
-  Wallet,
-  WalletDropdown,
-  WalletDropdownBasename,
-  WalletDropdownFundLink,
-  WalletDropdownLink,
-  WalletDropdownDisconnect,
-} from "@coinbase/onchainkit/wallet";
-import {
-  Address,
-  Avatar,
-  Name,
-  Identity,
-  EthBalance,
-} from "@coinbase/onchainkit/identity";
+import { useAccount } from "@/contexts/AccountContext";
+import { Button } from "./ui/button";
 import Image from "next/image";
 
 export function Header() {
+  const { account, isLoading, error, createPasskeyAccount } = useAccount();
+
+  const handleConnect = async () => {
+    try {
+      const username = `user_${Date.now()}`;
+      await createPasskeyAccount(username);
+      console.log("Account created successfully");
+    } catch (err) {
+      console.error("Failed to create account:", err);
+    }
+  };
+
   return (
-    <div className="fixed top-0 left-0 right-0 bg-background border-b z-50">
-      <div className="container mx-auto px-4">
-        <div className="h-16 flex items-center justify-between">
-          {/* Logo section */}
-          <div className="flex items-center h-full py-2">
-            <div className="relative h-full aspect-square">
-              <Image
-                src="/SP_LOGO.png"
-                alt="App Logo"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
-            <span className="ml-2 font-semibold text-lg sm:block">
-              Smart Portfolio
-            </span>
+    <div className="fixed top-0 left-0 right-0 h-16 border-b bg-background z-50">
+      <div className="container h-full">
+        <div className="flex items-center justify-between h-full">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/SP_LOGO.png"
+              alt="Smart Portfolio"
+              width={140}
+              height={28}
+            />
           </div>
-          <Wallet>
-            <ConnectWallet>
+
+          <div>
+            {error && (
+              <div className="text-red-500 text-sm mr-4">{error.message}</div>
+            )}
+
+            {account ? (
               <div className="flex items-center gap-2">
-                <Avatar className="h-6 w-6" />
-                <Name className="sm:block" />
+                <div className="text-sm">
+                  {account.address.slice(0, 6)}...{account.address.slice(-4)}
+                </div>
               </div>
-            </ConnectWallet>
-            <WalletDropdown className="z-[100]">
-              <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-                <Avatar />
-                <Name />
-                <Address />
-                <EthBalance />
-              </Identity>
-              <WalletDropdownBasename />
-              <WalletDropdownLink icon="wallet" href="https://keys.coinbase.com">
-                Wallet
-              </WalletDropdownLink>
-              <WalletDropdownFundLink />
-              <WalletDropdownDisconnect />
-            </WalletDropdown>
-          </Wallet>
+            ) : (
+              <Button onClick={handleConnect} disabled={isLoading}>
+                {isLoading ? "Creating Account..." : "Create Account"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

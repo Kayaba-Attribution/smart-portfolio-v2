@@ -1,11 +1,17 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
-import { useAccount, useReadContracts } from "wagmi";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { formatUnits } from "viem";
+import { useAccount } from "./AccountContext"; // Use our ZeroDev account
+import { publicClient } from "@/lib/passkey";
 import addresses from "../contracts/addresses.json";
 import ERC20_ABI from "../contracts/artifacts/ERC20_BASE.json";
-
 
 // Update Token interface
 interface Token {
@@ -90,62 +96,63 @@ export const TOKENS: Record<string, Token> = {
   },
 };
 
-
 interface TokenBalances {
   [symbol: string]: string;
 }
 
 interface TokenBalanceContextType {
   balances: TokenBalances;
-  refreshBalances: () => Promise<void>;
-  isLoading: boolean;
   tokens: Record<string, Token>;
-  getSortedTokenBalances: () => { symbol: string; balance: string; value: number }[];
+  isLoading: boolean;
+  refreshBalances: () => Promise<void>;
+  getSortedTokenBalances: () => Array<{
+    symbol: string;
+    balance: string;
+    value: number;
+  }>;
 }
 
-const TokenBalanceContext = createContext<TokenBalanceContextType | undefined>(undefined);
+const TokenBalanceContext = createContext<TokenBalanceContextType | undefined>(
+  undefined
+);
 
 export function TokenBalanceProvider({ children }: { children: ReactNode }) {
-  const { address } = useAccount();
+  const { account } = useAccount();
   const [balances, setBalances] = useState<TokenBalances>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  // Create contract reads for all tokens
-  const { data: tokenBalances, refetch: refetchAll } = useReadContracts({
-    contracts: Object.values(TOKENS).map((token) => ({
-      address: token.address,
-      abi: ERC20_ABI.abi as [],
-      functionName: "balanceOf",
-      args: address ? [address as `0x${string}`] : undefined,
-    })),
-  });
+  const refreshBalances = async () => {
+    if (!account?.address) return;
 
-  // Update balances when data changes
-  useEffect(() => {
-    if (address && tokenBalances) {
-      const newBalances: TokenBalances = {};
-      Object.keys(TOKENS).forEach((symbol, index) => {
-        const balance = tokenBalances[index]?.result;
-        if (balance !== undefined) {
-          newBalances[symbol] = formatUnits(balance, TOKENS[symbol].decimals);
-        }
-      });
-      setBalances(newBalances);
-    }
-  }, [address, tokenBalances]);
-
-  const refreshBalances = useCallback(async () => {
-    if (!address) return;
-    
     setIsLoading(true);
     try {
-      await refetchAll();
+      const newBalances: TokenBalances = {};
+
+      // Read all token balances in parallel
+      await Promise.all(
+        Object.entries(TOKENS).map(async ([symbol, token]) => {
+          const balance = (await publicClient.readContract({
+            address: token.address,
+            abi: ERC20_ABI.abi,
+            functionName: "balanceOf",
+            args: [account.address as `0x${string}`],
+          })) as bigint;
+          newBalances[symbol] = formatUnits(balance, token.decimals);
+        })
+      );
+
+      setBalances(newBalances);
     } catch (error) {
-      console.error("Error refreshing balances:", error);
+      console.error("Error fetching balances:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [address, refetchAll]);
+  };
+
+  // Refresh balances when account changes
+  useEffect(() => {
+    refreshBalances();
+  }, [account?.address]);
 
   // Add function to get token values (you can replace these dummy prices with real ones later)
   const getTokenPrice = (symbol: string) => {
@@ -165,7 +172,7 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
     return dummyPrices[symbol] || 0;
   };
 
-  const getSortedTokenBalances = useCallback(() => {
+  const getSortedTokenBalances = () => {
     return Object.entries(balances)
       .map(([symbol, balance]) => ({
         symbol,
@@ -173,19 +180,18 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
         value: parseFloat(balance) * getTokenPrice(symbol),
       }))
       .sort((a, b) => b.value - a.value);
-  }, [balances]);
-
-  // Update the context value
-  const value = {
-    balances,
-    refreshBalances,
-    isLoading,
-    tokens: TOKENS,
-    getSortedTokenBalances,
   };
 
   return (
-    <TokenBalanceContext.Provider value={value}>
+    <TokenBalanceContext.Provider
+      value={{
+        balances,
+        refreshBalances,
+        isLoading,
+        tokens: TOKENS,
+        getSortedTokenBalances,
+      }}
+    >
       {children}
     </TokenBalanceContext.Provider>
   );

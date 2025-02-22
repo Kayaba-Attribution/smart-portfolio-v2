@@ -6,6 +6,7 @@ import { Providers } from "@/components/providers";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
 import { AnimatePresence } from "framer-motion"
+import { DebugInfo } from "@/components/DebugInfo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,22 +31,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} dark`}>
-      <body 
-        style={{ 
-          position: 'fixed',
-          width: '100%',
-          height: '100%'
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${geistSans.variable} dark`}
+    >
+      <body
+        style={{
+          position: "fixed",
+          width: "100%",
+          height: "100%",
         }}
       >
         <Providers>
           <Header />
           <main className="h-[100dvh] pt-16 pb-20 overflow-y-auto">
-            <AnimatePresence mode="wait">
-              {children}
-            </AnimatePresence>
+            <AnimatePresence mode="wait">{children}</AnimatePresence>
           </main>
           <BottomNav />
+          <DebugInfo />
         </Providers>
       </body>
     </html>
