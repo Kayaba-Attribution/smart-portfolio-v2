@@ -52,6 +52,7 @@ export default function TradePage() {
       {/* Content */}
       <div className="max-w-[1200px] mx-auto p-6">
         {mode === "portfolio" ? (
+          
           <CreatePortfolio />
         ) : (
           <div className="h-[400px] flex items-center justify-center text-muted-foreground">
