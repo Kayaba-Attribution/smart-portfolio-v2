@@ -422,3 +422,124 @@ try {
        bundlerTransport: http(ZERODEV_CONFIG.bundlerUrl)
    });
    ```
+
+### Paymaster Integration
+
+1. **Paymaster Client Setup**
+   ```typescript
+   // Create paymaster client
+   const paymaster = createZeroDevPaymasterClient({
+       chain: ZERODEV_CONFIG.chain,
+       transport: http(ZERODEV_CONFIG.paymasterUrl)
+   });
+
+   // Create client with paymaster configuration
+   const client = await createKernelAccountClient({
+       account,
+       chain: ZERODEV_CONFIG.chain,
+       bundlerTransport: http(ZERODEV_CONFIG.bundlerUrl),
+       paymaster: {
+           getPaymasterData: (userOperation) => {
+               return paymaster.sponsorUserOperation({
+                   userOperation,
+               })
+           }
+       }
+   });
+   ```
+
+2. **Key Points**
+   - Paymaster enables gasless transactions
+   - Sponsorship handled through ZeroDev's infrastructure
+   - Simple integration with kernel account client
+   - No need for complex middleware configuration
+
+3. **Session Key Integration**
+   ```typescript
+   // Generate session key once at initialization
+   const sessionPrivateKey = generatePrivateKey();
+   const sessionKeySigner = privateKeyToAccount(sessionPrivateKey);
+
+   // Create session key validator
+   const ecdsaSigner = await toECDSASigner({
+       signer: sessionKeySigner
+   });
+
+   const sudoPolicy = await toSudoPolicy({});
+   const permissionValidator = await toPermissionValidator(publicClient, {
+       signer: ecdsaSigner,
+       policies: [sudoPolicy],
+       entryPoint: ZERODEV_CONFIG.entryPoint,
+       kernelVersion: ZERODEV_CONFIG.kernelVersion
+   });
+
+   // Create account with both validators
+   const account = await createKernelAccount(publicClient, {
+       plugins: {
+           sudo: passkeyValidator,
+           regular: permissionValidator
+       },
+       entryPoint: ZERODEV_CONFIG.entryPoint,
+       kernelVersion: ZERODEV_CONFIG.kernelVersion
+   });
+   ```
+
+4. **Account Creation Flow**
+   ```mermaid
+   graph TD
+       A[Start] --> B[Generate Session Key]
+       B --> C[Create WebAuthn Key]
+       C --> D[Create Passkey Validator]
+       D --> E[Create Session Validator]
+       E --> F[Create Kernel Account]
+       F --> G[Setup Paymaster]
+       G --> H[Create Client]
+       H --> I[Return Account & Client]
+   ```
+
+5. **Configuration Management**
+   - Centralized configuration in `ZERODEV_CONFIG`
+   - Environment validation on initialization
+   - Type-safe configuration access
+   - Consistent usage across the application
+
+6. **Error Handling**
+   ```typescript
+   try {
+       // Account creation/login logic
+   } catch (error) {
+       console.error('Error creating/logging in with passkey:', error);
+       throw error;
+   }
+   ```
+
+7. **Security Considerations**
+   - Session keys for improved UX
+   - Passkey validation for security
+   - Gasless transactions through paymaster
+   - Permission policies for access control
+
+### Implementation Notes
+
+1. **Account Types**
+   - Main account with passkey validator
+   - Session key with permission validator
+   - Combined in kernel account plugins
+
+2. **Transaction Flow**
+   - Transaction created
+   - Paymaster sponsors gas
+   - Session key or passkey signs
+   - Transaction executed
+
+3. **Best Practices**
+   - Generate session keys at initialization
+   - Validate configuration early
+   - Handle errors appropriately
+   - Use typed configurations
+
+4. **Future Considerations**
+   - Session key rotation
+   - Enhanced permission policies
+   - Multiple account support
+   - Recovery mechanisms
