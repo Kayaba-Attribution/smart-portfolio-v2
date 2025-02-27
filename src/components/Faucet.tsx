@@ -5,7 +5,7 @@ import { useAccount } from "@/contexts/AccountContext";
 import { Button } from "./ui/button";
 import { publicClient } from "@/lib/passkey";
 import addresses from "@/contracts/addresses.json";
-import FAUCET_ABI from "@/contracts/artifacts/SmartBasket.json";
+import { ERC20_FAUCET_ABI } from "../abi/erc20Faucet";
 
 export function Faucet() {
   const { account, client } = useAccount();
@@ -18,10 +18,11 @@ export function Faucet() {
       setIsLoading(true);
 
       const { request } = await publicClient.simulateContract({
+        address: addresses.core.SmartPortfolio as `0x${string}`,
+        abi: ERC20_FAUCET_ABI,
+        functionName: "claimFaucet",
+        args: [],
         account: account.address,
-        address: addresses.faucet as `0x${string}`,
-        abi: FAUCET_ABI.abi,
-        functionName: "mint",
       });
 
       const hash = await client.sendTransaction(request);
