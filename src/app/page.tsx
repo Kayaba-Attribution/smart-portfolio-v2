@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { subscribeUser, unsubscribeUser, sendNotification } from "./actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ import {
   ArrowDownIcon,
   RefreshCcw,
   ExternalLink,
+  X,
 } from "lucide-react";
 import { Faucet } from "../components/Faucet";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -206,10 +207,14 @@ function PortfolioOverview() {
   const { balances, refreshBalances, isLoading } = useTokenBalances();
 
   // Calculate total portfolio value
-  const totalValue = Object.entries(balances).reduce((acc, [symbol, balance]) => {
-    const dummyPrice = symbol === 'USDC' ? 1 : symbol === 'WBTC' ? 40000 : 2000;
-    return acc + (parseFloat(balance) * dummyPrice);
-  }, 0);
+  const totalValue = Object.entries(balances).reduce(
+    (acc, [symbol, balance]) => {
+      const dummyPrice =
+        symbol === "USDC" ? 1 : symbol === "WBTC" ? 40000 : 2000;
+      return acc + parseFloat(balance) * dummyPrice;
+    },
+    0
+  );
 
   return (
     <div className="space-y-4">
@@ -297,6 +302,128 @@ function PortfolioOverview() {
   );
 }
 
+function DebugOverlay() {
+  const [isVisible, setIsVisible] = useState(true);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [debugInfo, setDebugInfo] = useState({
+    userAgent: "",
+    viewport: "",
+    displayMode: "",
+    orientation: "",
+    timestamp: "",
+  });
+  const logsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Override console methods
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    const originalInfo = console.info;
+
+    function addLog(type: string, ...args: any[]) {
+      const timestamp = new Date().toLocaleTimeString();
+      const message = args
+        .map((arg) =>
+          typeof arg === "object" ? JSON.stringify(arg) : String(arg)
+        )
+        .join(" ");
+
+      setLogs((prev) =>
+        [...prev, `[${timestamp}] [${type}] ${message}`].slice(-50)
+      );
+    }
+
+    console.log = (...args) => {
+      originalLog.apply(console, args);
+      addLog("log", ...args);
+    };
+
+    console.error = (...args) => {
+      originalError.apply(console, args);
+      addLog("error", ...args);
+    };
+
+    console.warn = (...args) => {
+      originalWarn.apply(console, args);
+      addLog("warn", ...args);
+    };
+
+    console.info = (...args) => {
+      originalInfo.apply(console, args);
+      addLog("info", ...args);
+    };
+
+    // Update debug info
+    const updateDebugInfo = () => {
+      setDebugInfo({
+        userAgent: navigator.userAgent,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        displayMode: window.matchMedia("(display-mode: standalone)").matches
+          ? "standalone"
+          : "browser",
+        orientation: screen.orientation.type,
+        timestamp: new Date().toLocaleTimeString(),
+      });
+    };
+
+    updateDebugInfo();
+    window.addEventListener("resize", updateDebugInfo);
+    screen.orientation.addEventListener("change", updateDebugInfo);
+
+    // Cleanup
+    return () => {
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
+      console.info = originalInfo;
+      window.removeEventListener("resize", updateDebugInfo);
+      screen.orientation.removeEventListener("change", updateDebugInfo);
+    };
+  }, []);
+
+  // Auto-scroll logs to bottom
+  useEffect(() => {
+    if (logsRef.current) {
+      logsRef.current.scrollTop = logsRef.current.scrollHeight;
+    }
+  }, [logs]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-black/80 text-white p-4 text-xs font-mono z-50">
+      <button
+        onClick={() => setIsVisible(false)}
+        className="absolute top-2 right-2 p-1"
+      >
+        <X className="h-4 w-4" />
+      </button>
+
+      {/* Device Info */}
+      <div className="space-y-1 mb-2 pb-2 border-b border-white/20">
+        <div>📱 UA: {debugInfo.userAgent}</div>
+        <div>📐 Viewport: {debugInfo.viewport}</div>
+        <div>🖥️ Mode: {debugInfo.displayMode}</div>
+        <div>🔄 Orientation: {debugInfo.orientation}</div>
+        <div>⏰ Updated: {debugInfo.timestamp}</div>
+      </div>
+
+      {/* Console Logs */}
+      <div
+        ref={logsRef}
+        className="max-h-[30vh] overflow-y-auto space-y-1 font-mono"
+      >
+        {logs.map((log, index) => (
+          <div key={index} className="whitespace-pre-wrap break-words">
+            {log}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Page() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -314,19 +441,16 @@ export default function Page() {
     return <LoadingAnimation />;
   }
 
-  if (!isStandalone) {
-    return (
-      <PageWrapper>
+  return (
+    <PageWrapper>
+      {!isStandalone ? (
         <div className="min-h-screen flex flex-col items-center justify-center p-4">
           <InstallPrompt />
         </div>
-      </PageWrapper>
-    );
-  }
-
-  return (
-    <PageWrapper>
-      <PortfolioOverview />
+      ) : (
+        <PortfolioOverview />
+      )}
+      <DebugOverlay />
     </PageWrapper>
   );
 }

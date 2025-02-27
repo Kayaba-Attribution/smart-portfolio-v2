@@ -140,7 +140,7 @@ export async function loginWithPasskey(username: string) {
         });
 
         // Create paymaster client
-        const paymaster = createZeroDevPaymasterClient({
+        const paymasterClient = createZeroDevPaymasterClient({
             chain: ZERODEV_CONFIG.chain,
             transport: http(ZERODEV_CONFIG.paymasterUrl)
         });
@@ -152,7 +152,7 @@ export async function loginWithPasskey(username: string) {
             bundlerTransport: http(ZERODEV_CONFIG.bundlerUrl),
             paymaster: {
                 getPaymasterData: (userOperation) => {
-                  return paymaster.sponsorUserOperation({
+                  return paymasterClient.sponsorUserOperation({
                     userOperation,
                   })
                 }

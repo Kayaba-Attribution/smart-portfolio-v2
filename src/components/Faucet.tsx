@@ -18,14 +18,26 @@ export function Faucet() {
       setIsLoading(true);
 
       const { request } = await publicClient.simulateContract({
-        address: addresses.core.SmartPortfolio as `0x${string}`,
+        address: addresses.tokens.USDC as `0x${string}`,
         abi: ERC20_FAUCET_ABI,
         functionName: "claimFaucet",
         args: [],
         account: account.address,
       });
+      console.log("Request:", request);
 
-      const hash = await client.sendTransaction(request);
+      // https://docs.zerodev.app/sdk/core-api/send-transactions#sending-transactions-1
+      // https://github.com/zerodevapp/zerodev-examples/blob/main/send-transactions/send-userop.ts
+      const userOpHash = await client.sendUserOperation({
+        callData: client.account.encodeCalls([
+          {
+            to,
+            value,
+            data,
+          },
+        ]),
+      });
+
       console.log("Mint transaction:", hash);
     } catch (error) {
       console.error("Error minting:", error);
