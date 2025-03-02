@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import {
@@ -7,32 +8,38 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import type { KernelAccountClient } from "@zerodev/sdk";
+import type { KernelAccountClient, KernelSmartAccountImplementation } from "@zerodev/sdk";
 import { handleRegister, loginWithPasskey } from "@/lib/passkey";
-
-// Using a type that matches the account structure without importing problematic types
-type Account = {
-  address: `0x${string}`;
-  // Add other properties we know we'll use
-  signMessage?: (args: { message: string }) => Promise<string>;
-};
+import { encodeFunctionData } from "viem";
 
 interface AccountContextType {
-  account: Account | null;
+  account: KernelSmartAccountImplementation | null;
   client: KernelAccountClient | null;
   isLoading: boolean;
   error: Error | null;
   registerPasskey: () => Promise<void>;
   loginWithPasskey: (username: string) => Promise<void>;
+  sendUserOp: (params: {
+    contractAddress: string;
+    contractABI: any[];
+    functionName: string;
+    args: any[];
+  }) => Promise<string>;
+  isSendingUserOp: boolean;
+  userOpStatus: string;
+  userOpHash: string | null;
 }
 
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
 
 export function AccountProvider({ children }: { children: ReactNode }) {
-  const [account, setAccount] = useState<Account | null>(null);
+  const [account, setAccount] = useState<KernelSmartAccountImplementation | null>(null);
   const [client, setClient] = useState<KernelAccountClient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isSendingUserOp, setIsSendingUserOp] = useState(false);
+  const [userOpStatus, setUserOpStatus] = useState('');
+  const [userOpHash, setUserOpHash] = useState<string | null>(null);
 
   const handlePasskeyRegistration = async () => {
     try {
@@ -69,6 +76,57 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const handleSendUserOp = async ({
+    contractAddress,
+    contractABI,
+    functionName,
+    args,
+  }: {
+    contractAddress: string;
+    contractABI: any[];
+    functionName: string;
+    args: any[];
+  }) => {
+    if (!client || !account || !account.encodeCalls) {
+      throw new Error("Account or client not initialized");
+    }
+
+    try {
+      setIsSendingUserOp(true);
+      setUserOpStatus('Sending UserOp...');
+      
+      const userOpHash = await client.sendUserOperation({
+        callData: await account.encodeCalls([{
+          to: contractAddress as `0x${string}`,
+          value: BigInt(0),
+          data: encodeFunctionData({
+            abi: contractABI,
+            functionName,
+            args,
+          }),
+        }]),
+      });
+      
+      setUserOpHash(userOpHash);
+      
+      await client.waitForUserOperationReceipt({
+        hash: userOpHash,
+      });
+      
+      // Update the message based on the count of UserOps
+      const userOpMessage = `UserOp completed. <a href="https://jiffyscan.xyz/userOpHash/${userOpHash}?network=sepolia" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700">Click here to view.</a>`;
+      
+      setUserOpStatus(userOpMessage);
+      return userOpHash;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to send UserOp";
+      setUserOpStatus(`Error: ${errorMessage}`);
+      throw err;
+    } finally {
+      setIsSendingUserOp(false);
+    }
+  };
+
   // Auto-connect logic will go here
   useEffect(() => {
     // TODO: Implement auto-connect from stored account
@@ -83,6 +141,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         error,
         registerPasskey: handlePasskeyRegistration,
         loginWithPasskey: handlePasskeyLogin,
+        sendUserOp: handleSendUserOp,
+        isSendingUserOp,
+        userOpStatus,
+        userOpHash,
       }}
     >
       {children}
