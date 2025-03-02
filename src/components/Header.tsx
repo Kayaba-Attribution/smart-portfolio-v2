@@ -5,15 +5,14 @@ import { Button } from "./ui/button";
 import Image from "next/image";
 
 export function Header() {
-  const { account, isLoading, error, createPasskeyAccount } = useAccount();
+  const { account, isLoading, error, registerPasskey } = useAccount();
 
   const handleConnect = async () => {
     try {
-      const username = `user_${Date.now()}`;
-      await createPasskeyAccount(username);
-      console.log("Account created successfully");
+      await registerPasskey();
+      console.log("Passkey registered successfully");
     } catch (err) {
-      console.error("Failed to create account:", err);
+      console.error("Failed to register passkey:", err);
     }
   };
 

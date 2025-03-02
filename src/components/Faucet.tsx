@@ -29,13 +29,8 @@ export function Faucet() {
       // https://docs.zerodev.app/sdk/core-api/send-transactions#sending-transactions-1
       // https://github.com/zerodevapp/zerodev-examples/blob/main/send-transactions/send-userop.ts
       const userOpHash = await client.sendUserOperation({
-        callData: client.account.encodeCalls([
-          {
-            to,
-            value,
-            data,
-          },
-        ]),
+        account: client.account,
+        callData: request,
       });
 
       console.log("Mint transaction:", hash);

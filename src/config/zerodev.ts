@@ -20,6 +20,8 @@ export const ZERODEV_CONFIG = {
     // Validator configuration
     validatorVersion: PasskeyValidatorContractVersion.V0_0_2,
 
+    // passkeyName
+    passkeyName: "SmartPortfolio",
     // Environment validation
     validate() {
         const required = [

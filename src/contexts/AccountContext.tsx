@@ -8,7 +8,7 @@ import {
   ReactNode,
 } from "react";
 import type { KernelAccountClient } from "@zerodev/sdk";
-import { createAccountWithPasskey, loginWithPasskey } from "@/lib/passkey";
+import { handleRegister, loginWithPasskey } from "@/lib/passkey";
 
 // Using a type that matches the account structure without importing problematic types
 type Account = {
@@ -22,7 +22,7 @@ interface AccountContextType {
   client: KernelAccountClient | null;
   isLoading: boolean;
   error: Error | null;
-  createPasskeyAccount: (username: string) => Promise<void>;
+  registerPasskey: () => Promise<void>;
   loginWithPasskey: (username: string) => Promise<void>;
 }
 
@@ -34,18 +34,18 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const handlePasskeyAccount = async (username: string) => {
+  const handlePasskeyRegistration = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const { account: newAccount, client: newClient } =
-        await createAccountWithPasskey(username);
+      // Now properly use the returned account and client
+      const { account: newAccount, client: newClient } = await handleRegister();
       localStorage.setItem("accountAddress", newAccount.address);
       setAccount(newAccount);
       setClient(newClient);
     } catch (err) {
       setError(
-        err instanceof Error ? err : new Error("Failed to create account")
+        err instanceof Error ? err : new Error("Failed to register passkey")
       );
     } finally {
       setIsLoading(false);
@@ -81,7 +81,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         client,
         isLoading,
         error,
-        createPasskeyAccount: handlePasskeyAccount,
+        registerPasskey: handlePasskeyRegistration,
         loginWithPasskey: handlePasskeyLogin,
       }}
     >
