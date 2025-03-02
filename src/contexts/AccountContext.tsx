@@ -19,6 +19,8 @@ interface AccountContextType {
   error: Error | null;
   registerPasskey: () => Promise<void>;
   loginWithPasskey: (username: string) => Promise<void>;
+  logout: () => void;
+  username: string | null;
   sendUserOp: (params: {
     contractAddress: string;
     contractABI: any;
@@ -41,16 +43,26 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [isSendingUserOp, setIsSendingUserOp] = useState(false);
   const [userOpStatus, setUserOpStatus] = useState('');
   const [userOpHash, setUserOpHash] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
 
   const handlePasskeyRegistration = async () => {
     try {
       setIsLoading(true);
       setError(null);
+      
+      // Generate a unique username
+      const newUsername = `user_${Date.now()}`;
+      
       // Now properly use the returned account and client
       const { account: newAccount, client: newClient } = await handleRegister();
+      
+      // Store both the address and username
       localStorage.setItem("accountAddress", newAccount.address);
+      localStorage.setItem("username", newUsername);
+      
       setAccount(newAccount);
       setClient(newClient);
+      setUsername(newUsername);
     } catch (err) {
       setError(
         err instanceof Error ? err : new Error("Failed to register passkey")
@@ -60,21 +72,30 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handlePasskeyLogin = async (username: string) => {
+  const handlePasskeyLogin = async (usernameToLogin: string) => {
     try {
       setIsLoading(true);
       setError(null);
       const { account: newAccount, client: newClient } = await loginWithPasskey(
-        username
+        usernameToLogin
       );
       localStorage.setItem("accountAddress", newAccount.address);
       setAccount(newAccount);
       setClient(newClient);
+      setUsername(usernameToLogin);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to login"));
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const handleLogout = () => {
+    setAccount(null);
+    setClient(null);
+    setUsername(null);
+    localStorage.removeItem("accountAddress");
+    localStorage.removeItem("username");
   };
 
   const handleSendUserOp = async ({
@@ -136,9 +157,21 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Auto-connect logic will go here
+  // Auto-connect logic
   useEffect(() => {
-    // TODO: Implement auto-connect from stored account
+    const storedUsername = localStorage.getItem("username");
+    const storedAddress = localStorage.getItem("accountAddress");
+    
+    if (storedUsername && storedAddress) {
+      setUsername(storedUsername);
+      // Try to login with the stored username
+      handlePasskeyLogin(storedUsername).catch(err => {
+        console.error("Auto-login failed:", err);
+        // If auto-login fails, clear the stored data
+        localStorage.removeItem("username");
+        localStorage.removeItem("accountAddress");
+      });
+    }
   }, []);
 
   return (
@@ -150,6 +183,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         error,
         registerPasskey: handlePasskeyRegistration,
         loginWithPasskey: handlePasskeyLogin,
+        logout: handleLogout,
+        username,
         sendUserOp: handleSendUserOp,
         isSendingUserOp,
         userOpStatus,

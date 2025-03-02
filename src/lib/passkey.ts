@@ -54,7 +54,7 @@ export async function handleRegister() {
 
   const { kernelAccount, kernelClient } = await createAccountAndClient(passkeyValidator);
   
-  // Return the account and client instead of showing an alert
+  // Return the account and client
   return { account: kernelAccount, client: kernelClient };
 }
 

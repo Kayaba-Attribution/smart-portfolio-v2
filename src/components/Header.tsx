@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import Image from "next/image";
 
 export function Header() {
-  const { account, isLoading, error, registerPasskey } = useAccount();
+  const { account, isLoading, error, registerPasskey, username, logout } = useAccount();
 
   const handleConnect = async () => {
     try {
@@ -35,10 +35,14 @@ export function Header() {
             )}
 
             {account ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
                 <div className="text-sm">
+                  {username && <span className="mr-2">{username}</span>}
                   {account.address.slice(0, 6)}...{account.address.slice(-4)}
                 </div>
+                <Button variant="outline" size="sm" onClick={logout}>
+                  Logout
+                </Button>
               </div>
             ) : (
               <Button onClick={handleConnect} disabled={isLoading}>
