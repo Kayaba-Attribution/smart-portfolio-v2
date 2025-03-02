@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useAccount } from "@/contexts/AccountContext";
+import { useTokenBalances } from "@/contexts/TokenBalanceContext";
 import { Button } from "./ui/button";
 import addresses from "@/contracts/addresses.json";
 import { ERC20_FAUCET_ABI } from "../abi/erc20Faucet";
 
 export function Faucet() {
   const { account, sendUserOp } = useAccount();
+  const { refreshBalances } = useTokenBalances();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,12 +20,13 @@ export function Faucet() {
       setIsLoading(true);
       setError(null);
 
-      // Use the sendUserOp helper from AccountContext
+      // Use the sendUserOp helper from AccountContext with onSuccess callback
       const userOpHash = await sendUserOp({
         contractAddress: addresses.tokens.USDC,
         contractABI: ERC20_FAUCET_ABI,
         functionName: "claimFaucet",
         args: [],
+        onSuccess: refreshBalances, // Refresh balances after successful transaction
       });
 
       console.log("Mint transaction completed:", userOpHash);

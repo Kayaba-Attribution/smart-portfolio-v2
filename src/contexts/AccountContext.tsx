@@ -24,6 +24,7 @@ interface AccountContextType {
     contractABI: any;
     functionName: string;
     args: any[];
+    onSuccess?: () => void;
   }) => Promise<string>;
   isSendingUserOp: boolean;
   userOpStatus: string;
@@ -81,11 +82,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     contractABI,
     functionName,
     args,
+    onSuccess,
   }: {
     contractAddress: string;
-    contractABI: any[];
+    contractABI: any;
     functionName: string;
     args: any[];
+    onSuccess?: () => void;
   }) => {
     if (!client || !account || !account.encodeCalls) {
       throw new Error("Account or client not initialized");
@@ -117,6 +120,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       const userOpMessage = `UserOp completed. <a href="https://jiffyscan.xyz/userOpHash/${userOpHash}?network=sepolia" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700">Click here to view.</a>`;
       
       setUserOpStatus(userOpMessage);
+      
+      // Call the onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
+      
       return userOpHash;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to send UserOp";
