@@ -21,7 +21,7 @@ interface AccountContextType {
   loginWithPasskey: (username: string) => Promise<void>;
   sendUserOp: (params: {
     contractAddress: string;
-    contractABI: any[];
+    contractABI: any;
     functionName: string;
     args: any[];
   }) => Promise<string>;
