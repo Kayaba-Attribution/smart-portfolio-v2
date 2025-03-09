@@ -2,13 +2,15 @@
 
 import webpush from 'web-push'
 
-// Add type for web-push subscription
-type WebPushSubscription = {
+// Add types for subscriptions
+type PushSubscriptionKeys = {
+    p256dh: string;
+    auth: string;
+}
+
+type SerializedPushSubscription = {
     endpoint: string;
-    keys: {
-        p256dh: string;
-        auth: string;
-    };
+    keys: PushSubscriptionKeys;
 }
 
 webpush.setVapidDetails(
@@ -17,7 +19,7 @@ webpush.setVapidDetails(
     process.env.VAPID_PRIVATE_KEY!
 )
 
-export async function subscribeUser(subscription: PushSubscription) {
+export async function subscribeUser(subscription: SerializedPushSubscription) {
     try {
         // Store subscription in your database
         return { success: true, subscription }
@@ -37,19 +39,14 @@ export async function unsubscribeUser(endpoint: string) {
     }
 }
 
-export async function sendNotification(subscription: PushSubscription, message: string) {
+export async function sendNotification(
+    subscription: SerializedPushSubscription,
+    message: string
+) {
     try {
-        // Convert browser PushSubscription to web-push format
-        const webPushSubscription: WebPushSubscription = {
-            endpoint: subscription.endpoint,
-            keys: {
-                p256dh: subscription.toJSON().keys!.p256dh,
-                auth: subscription.toJSON().keys!.auth
-            }
-        }
-
+        // The subscription is already in the correct format
         await webpush.sendNotification(
-            webPushSubscription,
+            subscription,
             JSON.stringify({
                 title: 'Test Notification',
                 body: message,
