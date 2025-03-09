@@ -460,7 +460,7 @@ export function CreatePortfolio() {
                 <DialogHeader>
                   <DialogTitle>Add Token</DialogTitle>
                   <DialogDescription>
-                    Select a token to add to your portfolio
+                    Select a token and set its allocation percentage
                   </DialogDescription>
                 </DialogHeader>
 
@@ -555,12 +555,65 @@ export function CreatePortfolio() {
                       step={1}
                       className="py-4"
                     />
-                    {totalAllocation > 100 && (
-                      <div className="flex items-center gap-2 text-sm text-destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <span>Total allocation cannot exceed 100%</span>
-                      </div>
-                    )}
+
+                    {/* Quick allocation buttons */}
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setNewToken({ ...newToken, allocation: 25 })
+                        }
+                      >
+                        25%
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setNewToken({ ...newToken, allocation: 50 })
+                        }
+                      >
+                        50%
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setNewToken({ ...newToken, allocation: 75 })
+                        }
+                      >
+                        75%
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setNewToken({ ...newToken, allocation: 100 })
+                        }
+                      >
+                        100%
+                      </Button>
+                      {customTokens.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setNewToken({
+                              ...newToken,
+                              allocation:
+                                100 -
+                                customTokens.reduce(
+                                  (sum, t) => sum + t.allocation,
+                                  0
+                                ),
+                            })
+                          }
+                        >
+                          Fill
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <Button
