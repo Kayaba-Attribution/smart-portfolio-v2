@@ -37,6 +37,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { publicClient } from "@/lib/web3";
+import SMART_PORTFOLIO_ABI from "@/contracts/artifacts/SmartBasket.json";
+import { toast } from "sonner";
 
 // Risk template definitions
 type RiskTemplate = {
@@ -227,45 +229,76 @@ export function CreatePortfolio() {
     setCustomTokens(newTokens);
   };
 
-  // const updateAllocation = (index: number, value: number) => {
-  //   const newTokens = [...customTokens];
-  //   const oldAllocation = newTokens[index].allocation;
-  //   const difference = value - oldAllocation;
+  const handleCreatePortfolio = async () => {
+    if (!account || !amount) return;
 
-  //   // Don't proceed if trying to set below 0 or above 100
-  //   if (value < 0 || value > 100) return;
+    try {
+      const tokens =
+        mode === "template"
+          ? Object.entries(RISK_TEMPLATES[selectedTemplate].allocation).map(
+              ([symbol, allocation]) => ({
+                symbol,
+                allocation: allocation || 0,
+              })
+            )
+          : customTokens;
 
-  //   // Calculate total allocation excluding current token
-  //   const totalOthers = newTokens.reduce((sum, token, idx) =>
-  //     idx !== index ? sum + token.allocation : sum, 0);
+      if (!tokens.length) {
+        toast.error("Please select tokens for your portfolio");
+        return;
+      }
 
-  //   // Don't proceed if this would make total allocation exceed 100
-  //   if (totalOthers + value > 100) return;
+      // Format allocations according to SmartBasket's TokenAllocation struct
+      const allocations = tokens.map((token) => ({
+        tokenAddress: TOKENS[token.symbol].address,
+        percentage: token.allocation,
+        amount: 0, // This will be calculated by the contract
+      }));
 
-  //   // Update current token allocation
-  //   newTokens[index].allocation = value;
+      const amountInWei = parseUnits(amount, 18);
 
-  //   // Distribute remaining percentage among other tokens proportionally
-  //   const remaining = 100 - value;
-  //   if (remaining > 0 && newTokens.length > 1) {
-  //     const otherTokens = newTokens.filter((_, idx) => idx !== index);
-  //     const totalOtherAllocations = otherTokens.reduce((sum, token) => sum + token.allocation, 0);
+      const userOpHash = await sendUserOp({
+        contractAddress: addresses.core.SmartPortfolio,
+        contractABI: SMART_PORTFOLIO_ABI.abi,
+        functionName: "createBasket",
+        args: [allocations, amountInWei],
+        onSuccess: () => {
+          toast.success("Portfolio created successfully!");
+          // Reset form
+          setAmount("");
+          setSelectedTemplate("");
+          setCustomTokens([]);
+        },
+      });
 
-  //     newTokens.forEach((token, idx) => {
-  //       if (idx !== index) {
-  //         if (totalOtherAllocations === 0) {
-  //           // If other allocations are 0, distribute equally
-  //           token.allocation = remaining / (newTokens.length - 1);
-  //         } else {
-  //           // Otherwise, distribute proportionally
-  //           token.allocation = (token.allocation / totalOtherAllocations) * remaining;
-  //         }
-  //       }
-  //     });
-  //   }
-
-  //   setCustomTokens(newTokens);
-  // };
+      toast.promise(
+        // This is just for UI feedback, the actual transaction is already sent
+        new Promise((resolve) => setTimeout(resolve, 1000)),
+        {
+          loading: "Creating your portfolio...",
+          success: (
+            <div>
+              Portfolio creation initiated
+              <a
+                href={`https://jiffyscan.xyz/userOpHash/${userOpHash}?network=sepolia`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:text-blue-700 underline mt-2 block"
+              >
+                View Transaction
+              </a>
+            </div>
+          ),
+          error: "Failed to create portfolio",
+        }
+      );
+    } catch (error) {
+      console.error("Error creating portfolio:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create portfolio"
+      );
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -568,7 +601,18 @@ export function CreatePortfolio() {
             {isApproving ? "Approving..." : "Approve USDC Spending"}
           </Button>
         ) : (
-          <Button className="w-[200px]">Create Portfolio</Button>
+          <Button
+            className="w-[200px]"
+            onClick={handleCreatePortfolio}
+            disabled={
+              !amount ||
+              (mode === "template"
+                ? !selectedTemplate
+                : customTokens.length === 0)
+            }
+          >
+            Create Portfolio
+          </Button>
         )}
       </div>
     </div>

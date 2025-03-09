@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
 import { AnimatePresence } from "framer-motion"
 import { DebugInfo } from "@/components/DebugInfo";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +51,7 @@ export default function RootLayout({
           </main>
           <BottomNav />
           <DebugInfo />
+          <Toaster />
         </Providers>
       </body>
     </html>
