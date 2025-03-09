@@ -321,6 +321,7 @@ function DebugOverlay() {
     const originalWarn = console.warn;
     const originalInfo = console.info;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function addLog(type: string, ...args: any[]) {
       const timestamp = new Date().toLocaleTimeString();
       const message = args

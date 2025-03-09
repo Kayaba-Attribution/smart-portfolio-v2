@@ -3,9 +3,22 @@
 import { useAccount } from "@/contexts/AccountContext";
 import { Button } from "./ui/button";
 import Image from "next/image";
+import { useState, useEffect } from "react";
 
 export function Header() {
-  const { account, isLoading, error, registerPasskey, username, logout } = useAccount();
+  const { account, isLoading, error, registerPasskey, username, logout } =
+    useAccount();
+  const [accountAddress, setAccountAddress] = useState<string>("");
+
+  useEffect(() => {
+    const getAddress = async () => {
+      if (account) {
+        const addr = await account.getAddress();
+        setAccountAddress(addr);
+      }
+    };
+    getAddress();
+  }, [account]);
 
   const handleConnect = async () => {
     try {
@@ -38,7 +51,10 @@ export function Header() {
               <div className="flex items-center gap-4">
                 <div className="text-sm">
                   {username && <span className="mr-2">{username}</span>}
-                  {account.address.slice(0, 6)}...{account.address.slice(-4)}
+                  {accountAddress &&
+                    `${accountAddress.slice(0, 6)}...${accountAddress.slice(
+                      -4
+                    )}`}
                 </div>
                 <Button variant="outline" size="sm" onClick={logout}>
                   Logout

@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import { formatUnits } from "viem";
@@ -121,12 +122,13 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
   const [balances, setBalances] = useState<TokenBalances>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const refreshBalances = async () => {
-    if (!account?.address) return;
+  const refreshBalances = useCallback(async () => {
+    if (!account) return;
 
     setIsLoading(true);
     try {
       const newBalances: TokenBalances = {};
+      const accountAddress = await account.getAddress();
 
       // Read all token balances in parallel
       await Promise.all(
@@ -135,7 +137,7 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
             address: token.address,
             abi: ERC20_ABI.abi,
             functionName: "balanceOf",
-            args: [account.address as `0x${string}`],
+            args: [accountAddress],
           })) as bigint;
           newBalances[symbol] = formatUnits(balance, token.decimals);
         })
@@ -147,12 +149,12 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [account]);
 
   // Refresh balances when account changes
   useEffect(() => {
     refreshBalances();
-  }, [account?.address]);
+  }, [refreshBalances]);
 
   // Add function to get token values (you can replace these dummy prices with real ones later)
   const getTokenPrice = (symbol: string) => {

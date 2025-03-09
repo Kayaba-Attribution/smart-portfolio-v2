@@ -22,7 +22,6 @@ import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart"
 
 // Generate dummy historical data based on current value
@@ -143,37 +142,79 @@ export function PortfolioChart({ currentValue }: PortfolioChartProps) {
                 tickMargin={8}
                 minTickGap={32}
                 tickFormatter={(value) => {
-                  const date = new Date(value)
+                  const date = new Date(value);
                   return date.toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
-                  })
+                  });
                 }}
               />
               <ChartTooltip
                 cursor={false}
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={(value) => {
-                      return new Date(value).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric"
-                      })
-                    }}
-                    valueFormatter={(value) => 
-                      `$${Number(value).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}`
+                content={({ active, payload, label }) => {
+                  if (!active || !payload) return null;
+
+                  const formattedLabel = new Date(label).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
                     }
-                  />
-                }
+                  );
+
+                  return (
+                    <div className="rounded-lg border bg-background p-2 shadow-sm">
+                      <div className="grid gap-2">
+                        <div className="text-sm font-medium">
+                          {formattedLabel}
+                        </div>
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {payload.map((item: any) => (
+                          <div
+                            key={item.name}
+                            className="flex items-center gap-2"
+                          >
+                            <div className="flex-1 text-sm">
+                              {
+                                chartConfig[
+                                  item.name as keyof typeof chartConfig
+                                ].label
+                              }
+                            </div>
+                            <div className="text-sm font-medium">
+                              $
+                              {Number(item.value).toLocaleString(undefined, {
+                                maximumFractionDigits: 2,
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }}
               />
               <defs>
                 {Object.entries(chartConfig).map(([key, config]) => (
-                  <linearGradient key={key} id={`gradient${key}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={config.color} stopOpacity={0.2} />
-                    <stop offset="100%" stopColor={config.color} stopOpacity={0} />
+                  <linearGradient
+                    key={key}
+                    id={`gradient${key}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="0%"
+                      stopColor={config.color}
+                      stopOpacity={0.2}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor={config.color}
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 ))}
               </defs>
@@ -225,11 +266,16 @@ export function PortfolioChart({ currentValue }: PortfolioChartProps) {
               )}
             </div>
             <div className="text-muted-foreground">
-              Last {timeRange === "7d" ? "7 days" : timeRange === "30d" ? "30 days" : "3 months"}
+              Last{" "}
+              {timeRange === "7d"
+                ? "7 days"
+                : timeRange === "30d"
+                ? "30 days"
+                : "3 months"}
             </div>
           </div>
         </div>
       </CardFooter>
     </Card>
-  )
+  );
 } 

@@ -17,7 +17,7 @@ import { ZERODEV_CONFIG } from "@/config/zerodev";
 import { toECDSASigner } from "@zerodev/permissions/signers";
 import { toSudoPolicy } from "@zerodev/permissions/policies";
 import { toPermissionValidator } from "@zerodev/permissions";
-import { KernelValidator } from "@zerodev/sdk/types/kernel";
+import type { KernelValidator } from "@zerodev/sdk/types";
 // Validate config on initialization
 ZERODEV_CONFIG.validate();
 
