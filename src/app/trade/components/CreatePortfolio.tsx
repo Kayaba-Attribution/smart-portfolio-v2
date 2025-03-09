@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Select,
   SelectContent,
@@ -14,7 +14,6 @@ import { Slider } from "@/components/ui/slider";
 import {
   X,
   Plus,
-  AlertCircle,
   Lightbulb,
   ShieldCheck,
   Scale,
@@ -122,8 +121,8 @@ export function CreatePortfolio() {
   const [totalAllocation, setTotalAllocation] = useState(0);
   const [isApproving, setIsApproving] = useState(false);
 
-  // Move checkAllowance outside useEffect
-  const checkAllowance = async () => {
+  // Wrap checkAllowance in useCallback
+  const checkAllowance = useCallback(async () => {
     if (!account) return;
 
     const accountAddress = await account.getAddress();
@@ -135,12 +134,12 @@ export function CreatePortfolio() {
     })) as bigint;
 
     setAllowance(allowance);
-  };
+  }, [account]);
 
   // Get allowance data
   useEffect(() => {
     checkAllowance();
-  }, [account]);
+  }, [checkAllowance]);
 
   // Handle token approval
   const handleApprove = async () => {
