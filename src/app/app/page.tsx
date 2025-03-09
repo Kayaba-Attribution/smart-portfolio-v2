@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,8 +34,13 @@ const PORTFOLIO_STATS = {
 
 function LoginOverlay() {
   const { registerPasskey, loginWithPasskey, isLoading } = useAccount();
-  const hasAccount = !!localStorage.getItem("accountAddress");
-  const { setLoginOverlayVisible } = useUI();
+  const [hasAccount, setHasAccount] = useState(false);
+
+  // Check for existing account on client-side only
+  useEffect(() => {
+    const savedAddress = localStorage.getItem("accountAddress");
+    setHasAccount(!!savedAddress);
+  }, []);
 
   const handleRegister = async () => {
     try {
@@ -48,15 +53,14 @@ function LoginOverlay() {
   };
 
   const handleLogin = async () => {
-    const username = localStorage.getItem("username");
-    if (!username) return;
-    await loginWithPasskey(username);
+    try {
+      const username = localStorage.getItem("username");
+      if (!username) return;
+      await loginWithPasskey(username);
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
   };
-
-  // Set login overlay visibility based on account
-  useEffect(() => {
-    setLoginOverlayVisible(!hasAccount);
-  }, [hasAccount, setLoginOverlayVisible]);
 
   return (
     <div className="fixed inset-0 bg-black z-[100] flex items-center justify-center">
