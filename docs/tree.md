@@ -13,21 +13,21 @@
 ├── src
 │   ├── abi
 │   │   └── erc20Faucet.ts
-│   ├── (app)
-│   │   ├── activity
-│   │   │   └── page.tsx
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   ├── rewards
-│   │   │   └── page.tsx
-│   │   ├── settings
-│   │   │   └── page.tsx
-│   │   └── trade
-│   │       ├── components
-│   │       │   └── CreatePortfolio.tsx
-│   │       └── page.tsx
 │   ├── app
 │   │   ├── actions.ts
+│   │   ├── app
+│   │   │   ├── activity
+│   │   │   │   └── page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── rewards
+│   │   │   │   └── page.tsx
+│   │   │   ├── settings
+│   │   │   │   └── page.tsx
+│   │   │   └── trade
+│   │   │       ├── components
+│   │   │       │   └── CreatePortfolio.tsx
+│   │   │       └── page.tsx
 │   │   ├── favicon.ico
 │   │   ├── globals.css
 │   │   ├── layout.tsx
@@ -68,7 +68,8 @@
 │   │   ├── AccountContext.tsx
 │   │   ├── PortfolioContext.tsx
 │   │   ├── ThemeContext.tsx
-│   │   └── TokenBalanceContext.tsx
+│   │   ├── TokenBalanceContext.tsx
+│   │   └── UIContext.tsx
 │   ├── contracts
 │   │   └── addresses.json
 │   └── lib
@@ -79,4 +80,4 @@
 ├── tailwind.config.ts
 └── tsconfig.json
 
-16 directories, 63 files
+16 directories, 64 files

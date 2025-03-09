@@ -9,11 +9,13 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import {
   subscribeUser,
   unsubscribeUser,
   sendNotification,
 } from "@/app/actions";
+import { useAccount } from "@/contexts/AccountContext";
 
 // URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -28,12 +30,26 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+// Create a serialized subscription from PushSubscription
+function serializeSubscription(subscription: PushSubscription) {
+  const json = subscription.toJSON();
+  return {
+    endpoint: subscription.endpoint,
+    keys: {
+      p256dh: json.keys?.p256dh || "",
+      auth: json.keys?.auth || "",
+    },
+  };
+}
+
 export function PushNotificationManager() {
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null
   );
   const [message, setMessage] = useState("");
+  const [autoNotify, setAutoNotify] = useState(true);
+  const { userOpStatus, userOpHash } = useAccount();
 
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
@@ -42,37 +58,74 @@ export function PushNotificationManager() {
     }
   }, []);
 
+  // Listen for user op status changes
+  useEffect(() => {
+    if (
+      subscription &&
+      autoNotify &&
+      userOpStatus &&
+      userOpStatus.includes("completed")
+    ) {
+      sendNotification(
+        serializeSubscription(subscription),
+        `Transaction completed! Hash: ${userOpHash?.slice(0, 10)}...`
+      );
+    } else if (
+      subscription &&
+      autoNotify &&
+      userOpStatus &&
+      userOpStatus.includes("Error")
+    ) {
+      sendNotification(
+        serializeSubscription(subscription),
+        `Transaction failed: ${userOpStatus}`
+      );
+    }
+  }, [userOpStatus, userOpHash, subscription, autoNotify]);
+
   async function registerServiceWorker() {
-    const registration = await navigator.serviceWorker.register("/sw.js", {
-      scope: "/",
-      updateViaCache: "none",
-    });
-    const sub = await registration.pushManager.getSubscription();
-    setSubscription(sub);
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js", {
+        scope: "/",
+        updateViaCache: "none",
+      });
+      const sub = await registration.pushManager.getSubscription();
+      setSubscription(sub);
+    } catch (error) {
+      console.error("Service worker registration failed:", error);
+    }
   }
 
   async function subscribeToPush() {
-    const registration = await navigator.serviceWorker.ready;
-    const sub = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(
-        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
-      ),
-    });
-    setSubscription(sub);
-    const serializedSub = JSON.parse(JSON.stringify(sub));
-    await subscribeUser(serializedSub);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const sub = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+        ),
+      });
+      setSubscription(sub);
+      const serializedSub = serializeSubscription(sub);
+      await subscribeUser(serializedSub);
+    } catch (error) {
+      console.error("Failed to subscribe to push:", error);
+    }
   }
 
   async function unsubscribeFromPush() {
-    await subscription?.unsubscribe();
-    setSubscription(null);
-    await unsubscribeUser(subscription?.endpoint || "");
+    try {
+      await subscription?.unsubscribe();
+      setSubscription(null);
+      await unsubscribeUser(subscription?.endpoint || "");
+    } catch (error) {
+      console.error("Failed to unsubscribe from push:", error);
+    }
   }
 
   async function sendTestNotification() {
     if (subscription) {
-      await sendNotification(subscription, message);
+      await sendNotification(serializeSubscription(subscription), message);
       setMessage("");
     }
   }
@@ -103,6 +156,10 @@ export function PushNotificationManager() {
       <CardContent className="space-y-4">
         {subscription ? (
           <>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Notify on transactions</span>
+              <Switch checked={autoNotify} onCheckedChange={setAutoNotify} />
+            </div>
             <div className="space-y-4">
               <div className="flex gap-4">
                 <input

@@ -108,7 +108,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsSendingUserOp(true);
-      setUserOpStatus("Sending UserOp...");
+      setUserOpStatus("Preparing transaction...");
 
       const userOpHash = await client.sendUserOperation({
         callData: await account.encodeCalls([
@@ -125,25 +125,22 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       });
 
       setUserOpHash(userOpHash);
+      setUserOpStatus("Transaction sent, waiting for confirmation...");
 
       await client.waitForUserOperationReceipt({
         hash: userOpHash,
       });
 
-      // Update the message based on the count of UserOps
-      const userOpMessage = `UserOp completed. <a href="https://jiffyscan.xyz/userOpHash/${userOpHash}?network=sepolia" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700">Click here to view.</a>`;
+      // Update with a clear "completed" phrase for the notification system to detect
+      setUserOpStatus(`Transaction completed. ${userOpHash}`);
 
-      setUserOpStatus(userOpMessage);
-
-      // Call the onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
-
+      
       return userOpHash;
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to send UserOp";
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
       setUserOpStatus(`Error: ${errorMessage}`);
       throw err;
     } finally {
