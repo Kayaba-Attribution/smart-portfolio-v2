@@ -1,545 +1,357 @@
-# Smart Portfolio Application Architecture
+## Smart Portfolio Development Guide
 
-## ZeroDev Integration Architecture
+### Core Architecture
 
-### Core Components
-
-1. **Configuration (`src/config/zerodev.ts`)**
-   ```typescript
-   // Core configuration for ZeroDev services
-   export const ZERODEV_CONFIG = {
-       projectId: process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID!,
-       bundlerUrl: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL!,
-       paymasterUrl: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL!,
-       passkeyServerUrl: process.env.NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL!,
-       chain: baseSepolia,
-       entryPoint: getEntryPoint("0.7"),
-       kernelVersion: KERNEL_V3_1,
-   }
-   ```
-
-2. **Passkey Management (`src/lib/passkey.ts`)**
-   - Handles account creation and authentication
-   - Manages WebAuthn key generation
-   - Creates kernel accounts and clients
-   - Provides public client for blockchain interactions
-
-3. **Account Context (`src/contexts/AccountContext.tsx`)**
-   - Central state management for user accounts
-   - Handles account creation and login flows
-   - Maintains account status and client instances
-   - Provides account information to the application
-
-### Authentication Flow
-
-1. **Initial Setup**
-   ```typescript
-   // Create public client
-   const publicClient = createPublicClient({
-       chain: baseSepolia,
-       transport: http()
-   });
-   ```
-
-2. **Account Creation Process**
-   - User clicks "Create Account" in Header
-   - Generates unique username
-   - Creates WebAuthn key
-   - Establishes passkey validator
-   - Creates kernel account
-   - Sets up kernel client
-
-3. **Login Flow**
-   - Similar to creation but uses WebAuthnMode.Login
-   - Recovers existing account using passkey
-   - Reestablishes kernel client connection
-
-### Detailed Authentication Flow
-
-1. **Account Creation Sequence**
-   ```typescript
-   // 1. User triggers creation in Header.tsx
-   const handleConnect = async () => {
-     const username = `user_${Date.now()}`; // Generate unique username
-     await createPasskeyAccount(username);
-   };
-
-   // 2. AccountContext processes request
-   const handlePasskeyAccount = async (username: string) => {
-     setIsLoading(true);
-     try {
-       const { account, client } = await createAccountWithPasskey(username);
-       localStorage.setItem("accountAddress", account.address);
-       setAccount(account);
-       setClient(client);
-     } catch (err) {
-       setError(err instanceof Error ? err : new Error("Failed to create account"));
-     }
-     setIsLoading(false);
-   };
-
-   // 3. Passkey library creates account
-   async function createAccountWithPasskey(username: string) {
-     // Format username for consistency
-     const formattedUsername = formatUsername(username);
-
-     // Create WebAuthn key with register mode
-     const webAuthnKey = await toWebAuthnKey({
-       passkeyName: formattedUsername,
-       passkeyServerUrl: PASSKEY_SERVER_URL,
-       mode: WebAuthnMode.Register
-     });
-
-     // Create validator for the account
-     const validator = await toPasskeyValidator(publicClient, {
-       webAuthnKey,
-       entryPoint,
-       kernelVersion: KERNEL_V3_1,
-       validatorContractVersion: PasskeyValidatorContractVersion.V0_0_2
-     });
-
-     // Create the kernel account
-     const account = await createKernelAccount(publicClient, {
-       plugins: { sudo: validator },
-       entryPoint,
-       kernelVersion: KERNEL_V3_1
-     });
-
-     // Create client for transactions
-     const client = await createKernelAccountClient({
-       account,
-       chain: baseSepolia,
-       bundlerTransport: http(BUNDLER_URL)
-     });
-
-     return { account, client };
-   }
-   ```
-
-2. **Login Flow Details**
-   ```typescript
-   // 1. Trigger login from UI
-   const handleLogin = async (username: string) => {
-     await loginWithPasskey(username);
-   };
-
-   // 2. Login process in passkey.ts
-   async function loginWithPasskey(username: string) {
-     const formattedUsername = formatUsername(username);
-     
-     // Create WebAuthn key in login mode
-     const webAuthnKey = await toWebAuthnKey({
-       passkeyName: formattedUsername,
-       passkeyServerUrl: PASSKEY_SERVER_URL,
-       mode: WebAuthnMode.Login
-     });
-
-     // Rest of the process similar to creation
-     // but uses existing passkey
-     ...
-   }
-   ```
-
-### Provider Architecture
-
-1. **Root Provider (`src/components/providers.tsx`)**
-   ```typescript
-   export function Providers({ children }: { children: ReactNode }) {
-     return (
-       <ThemeProvider>
-         <AccountProvider>
-           <TokenBalanceProvider>
-             {children}
-           </TokenBalanceProvider>
-         </AccountProvider>
-       </ThemeProvider>
-     );
-   }
-   ```
-
-2. **Provider Hierarchy**
-   - ThemeProvider: UI theme management
-   - AccountProvider: Authentication and account management
-   - TokenBalanceProvider: Token balance tracking and updates
-
-### Integration Points
-
-1. **Layout Integration (`src/app/layout.tsx`)**
-   - Wraps application in providers
-   - Manages viewport settings
-   - Handles theme initialization
-
-2. **Header Component (`src/components/Header.tsx`)**
-   - Primary user interface for account management
-   - Displays account status
-   - Handles account creation triggers
-
-3. **Token Management**
-   - Automatic balance updates on account connection
-   - Real-time balance tracking
-   - Token price calculations
-
-### Technical Details
-
-1. **Environment Variables**
-   ```plaintext
-   NEXT_PUBLIC_ZERODEV_BUNDLER_URL
-   NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL
-   NEXT_PUBLIC_ZERODEV_PROJECT_ID
-   ZERODEV_PAYMASTER_URL
-   ```
-
-2. **Key Functions**
-   ```typescript
-   // Account Creation
-   async function createAccountWithPasskey(username: string) {
-     const webAuthnKey = await toWebAuthnKey({...});
-     const validator = await toPasskeyValidator(publicClient, {...});
-     const account = await createKernelAccount(publicClient, {...});
-     const client = await createKernelAccountClient({...});
-     return { account, client };
-   }
-
-   // Login
-   async function loginWithPasskey(username: string) {
-     // Similar flow with WebAuthnMode.Login
-   }
-   ```
-
-3. **State Management**
-   - Account state in AccountContext
-   - Token balances in TokenBalanceContext
-   - Theme preferences in ThemeContext
-
-### Security Considerations
-
-1. **Passkey Security**
-   - WebAuthn standard implementation
-   - Biometric authentication support
-   - No private key storage
-   - Secure key generation and management
-
-2. **Environment Protection**
-   - Public vs private variables
-   - Secure configuration management
-   - Error handling and logging
-
-### Development Guidelines
-
-1. **Error Handling**
-   - Comprehensive error catching
-   - User feedback mechanisms
-   - Logging and debugging support
-
-2. **State Management**
-   - Context-based state organization
-   - Reactive updates
-   - Clean provider hierarchy
-
-3. **Component Integration**
-   - Clear separation of concerns
-   - Modular architecture
-   - Reusable patterns
-
-### Future Enhancements
-
-1. **Account Management**
-   - Multiple account support
-   - Account recovery mechanisms
-   - Enhanced error handling
-
-2. **Security**
-   - Additional authentication methods
-   - Transaction signing improvements
-   - Enhanced error recovery
-
-3. **User Experience**
-   - Improved feedback mechanisms
-   - Progressive loading states
-   - Enhanced error messaging
-
-### Token Balance Management
-
-1. **Balance Tracking Setup**
-   ```typescript
-   // In TokenBalanceContext
-   const refreshBalances = async () => {
-     if (!account?.address) return;
-     setIsLoading(true);
-     
-     try {
-       const newBalances: TokenBalances = {};
-       
-       // Parallel balance fetching for all tokens
-       await Promise.all(
-         Object.entries(TOKENS).map(async ([symbol, token]) => {
-           const balance = await publicClient.readContract({
-             address: token.address,
-             abi: ERC20_ABI.abi,
-             functionName: "balanceOf",
-             args: [account.address]
-           });
-           newBalances[symbol] = formatUnits(balance, token.decimals);
-         })
-       );
-
-       setBalances(newBalances);
-     } catch (error) {
-       console.error("Error fetching balances:", error);
-     } finally {
-       setIsLoading(false);
-     }
-   };
-   ```
-
-2. **Token Display Integration**
-   ```typescript
-   // In TokenBalanceDisplay component
-   export function TokenBalanceDisplay() {
-     const { tokens, getSortedTokenBalances } = useTokenBalances();
-     const sortedBalances = getSortedTokenBalances();
-
-     // Display logic for balances
-     return (
-       <div>
-         {sortedBalances.map(({ symbol, balance, value }) => (
-           <div key={symbol}>
-             <span>{tokens[symbol].name}</span>
-             <span>{balance} {symbol}</span>
-             <span>${value.toLocaleString()}</span>
-           </div>
-         ))}
-       </div>
-     );
-   }
-   ```
-
-### Transaction Handling
-
-1. **Transaction Flow**
-   ```typescript
-   // Example from Faucet component
-   const handleMint = async () => {
-     if (!account || !client) return;
-     
-     try {
-       setIsLoading(true);
-       
-       // Simulate transaction first
-       const { request } = await publicClient.simulateContract({
-         account: account.address,
-         address: addresses.faucet,
-         abi: FAUCET_ABI.abi,
-         functionName: "mint",
-       });
-
-       // Send actual transaction
-       const hash = await client.sendTransaction(request);
-       console.log("Mint transaction:", hash);
-     } catch (error) {
-       console.error("Error minting:", error);
-     } finally {
-       setIsLoading(false);
-     }
-   };
-   ```
-
-### State Updates and UI Integration
-
-1. **Account State Changes**
-   ```typescript
-   // In AccountContext
-   useEffect(() => {
-     // Auto-connect logic
-     const savedAddress = localStorage.getItem("accountAddress");
-     if (savedAddress) {
-       // Attempt to reconnect
-       handleReconnect(savedAddress);
-     }
-   }, []);
-   ```
-
-2. **Balance Updates**
-   ```typescript
-   // In TokenBalanceContext
-   useEffect(() => {
-     refreshBalances();
-     
-     // Optional: Set up polling for updates
-     const interval = setInterval(refreshBalances, 30000);
-     return () => clearInterval(interval);
-   }, [account?.address]);
-   ```
-
-### Error Handling Patterns
-
+1. **Account Management (`src/contexts/AccountContext.tsx`)**
 ```typescript
-// Standard error handling pattern
+interface AccountContextType {
+  account: KernelSmartAccountImplementation | null;
+  client: KernelAccountClient | null;
+  isLoading: boolean;
+  error: Error | null;
+  sendUserOp: (params: {
+    contractAddress: string;
+    contractABI: any;
+    functionName: string;
+    args: any[];
+    onSuccess?: () => void;
+  }) => Promise<string>;
+}
+```
+
+2. **Contract Interaction Pattern**
+```typescript
+// Example from CreatePortfolio.tsx
+const handleCreatePortfolio = async () => {
+  if (!account || !amount) return;
+  
+  try {
+    const allocations = tokens.map((token) => ({
+      tokenAddress: TOKENS[token.symbol].address,
+      percentage: token.allocation,
+      amount: 0, // Contract calculates
+    }));
+
+    const userOpHash = await sendUserOp({
+      contractAddress: addresses.core.SmartPortfolio,
+      contractABI: SMART_PORTFOLIO_ABI.abi,
+      functionName: "createBasket",
+      args: [allocations, amountInWei],
+      onSuccess: () => {
+        toast.success("Success!");
+        // Reset form...
+      },
+    });
+
+    // Show transaction feedback
+    toast.promise(/* ... */);
+  } catch (error) {
+    toast.error(/* ... */);
+  }
+};
+```
+
+### Development Patterns
+
+1. **State Management**
+- Use contexts for global state (Account, TokenBalance)
+- Component-level state with useState
+- Callbacks with useCallback for effect dependencies
+
+2. **Toast Notifications (using Sonner)**
+```typescript
+// Success notification
+toast.success("Operation completed!");
+
+// Error notification
+toast.error("Something went wrong");
+
+// Transaction feedback
+toast.promise(
+  promise,
+  {
+    loading: 'Processing...',
+    success: (data) => 'Success!',
+    error: (err) => 'Error: ' + err.message
+  }
+);
+```
+
+3. **Contract Interaction Flow**
+- Check account connection
+- Format input data
+- Send transaction via sendUserOp
+- Handle success/error with toast
+- Update UI state
+- Refresh relevant data
+
+4. **Common Code Patterns**
+
+a. **Account Check**
+```typescript
+if (!account) return;
+```
+
+b. **Loading States**
+```typescript
+const [isLoading, setIsLoading] = useState(false);
+
 try {
-  // Async operation
   setIsLoading(true);
-  await operation();
-} catch (error) {
-  // Error handling
-  console.error("Operation failed:", error);
-  setError(error instanceof Error ? error : new Error("Unknown error"));
+  // operation
 } finally {
-  // Cleanup
   setIsLoading(false);
 }
 ```
 
-### Configuration Management
+c. **Effect Dependencies**
+```typescript
+const callback = useCallback(() => {
+  // function body
+}, [required, dependencies]);
 
-1. **Centralized Configuration**
-   ```typescript
-   // All ZeroDev configuration is managed in one place
-   export const ZERODEV_CONFIG = {
-       projectId: process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID!,
-       bundlerUrl: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL!,
-       paymasterUrl: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL!,
-       passkeyServerUrl: process.env.NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL!,
-       // ... other configuration
-   };
-   ```
+useEffect(() => {
+  callback();
+}, [callback]);
+```
 
-2. **Environment Validation**
-   - Automatic validation of required configuration
-   - Early error detection for missing variables
-   - Consistent configuration access across the application
+### File Organization
 
-3. **Usage Pattern**
-   ```typescript
-   // Import and use configuration
-   import { ZERODEV_CONFIG } from "@/config/zerodev";
+1. **Contract Artifacts**
+- Place in `src/contracts/artifacts/`
+- Include full ABI with proper typing
+- Export contract addresses from `addresses.json`
 
-   // Configuration is validated on first import
-   ZERODEV_CONFIG.validate();
+2. **Components**
+- UI components in `src/components/`
+- Page components in `src/app/`
+- Context providers in `src/contexts/`
 
-   // Use configuration values
-   const client = createKernelAccountClient({
-       chain: ZERODEV_CONFIG.chain,
-       bundlerTransport: http(ZERODEV_CONFIG.bundlerUrl)
-   });
-   ```
+3. **Utilities**
+- Web3 utilities in `src/lib/web3.ts`
+- Shared helpers in `src/lib/utils.ts`
 
-### Paymaster Integration
+### Common Gotchas
 
-1. **Paymaster Client Setup**
-   ```typescript
-   // Create paymaster client
-   const paymaster = createZeroDevPaymasterClient({
-       chain: ZERODEV_CONFIG.chain,
-       transport: http(ZERODEV_CONFIG.paymasterUrl)
-   });
+1. **Effect Dependencies**
+- Always include all dependencies
+- Use useCallback for function dependencies
+- Watch for infinite loops
 
-   // Create client with paymaster configuration
-   const client = await createKernelAccountClient({
-       account,
-       chain: ZERODEV_CONFIG.chain,
-       bundlerTransport: http(ZERODEV_CONFIG.bundlerUrl),
-       paymaster: {
-           getPaymasterData: (userOperation) => {
-               return paymaster.sponsorUserOperation({
-                   userOperation,
-               })
-           }
-       }
-   });
-   ```
+2. **Type Safety**
+- Use proper typing for contract ABIs
+- Handle undefined/null states
+- Type check component props
 
-2. **Key Points**
-   - Paymaster enables gasless transactions
-   - Sponsorship handled through ZeroDev's infrastructure
-   - Simple integration with kernel account client
-   - No need for complex middleware configuration
+3. **Error Handling**
+- Always wrap async operations in try/catch
+- Provide user feedback via toast
+- Log errors for debugging
 
-3. **Session Key Integration**
-   ```typescript
-   // Generate session key once at initialization
-   const sessionPrivateKey = generatePrivateKey();
-   const sessionKeySigner = privateKeyToAccount(sessionPrivateKey);
+### Development Tips for Cursor
 
-   // Create session key validator
-   const ecdsaSigner = await toECDSASigner({
-       signer: sessionKeySigner
-   });
+1. **Quick Fixes**
+- Look for similar patterns in existing code
+- Check for missing dependencies in useEffect
+- Verify contract ABI matches function calls
 
-   const sudoPolicy = await toSudoPolicy({});
-   const permissionValidator = await toPermissionValidator(publicClient, {
-       signer: ecdsaSigner,
-       policies: [sudoPolicy],
-       entryPoint: ZERODEV_CONFIG.entryPoint,
-       kernelVersion: ZERODEV_CONFIG.kernelVersion
-   });
+2. **Common Commands**
+- "Fix the error on [file]"
+- "Update [component] to use [pattern]"
+- "Add toast notifications to [component]"
 
-   // Create account with both validators
-   const account = await createKernelAccount(publicClient, {
-       plugins: {
-           sudo: passkeyValidator,
-           regular: permissionValidator
-       },
-       entryPoint: ZERODEV_CONFIG.entryPoint,
-       kernelVersion: ZERODEV_CONFIG.kernelVersion
-   });
-   ```
+3. **Code Organization**
+- Keep related code together
+- Use consistent formatting
+- Add comments for complex logic
 
-4. **Account Creation Flow**
-   ```mermaid
-   graph TD
-       A[Start] --> B[Generate Session Key]
-       B --> C[Create WebAuthn Key]
-       C --> D[Create Passkey Validator]
-       D --> E[Create Session Validator]
-       E --> F[Create Kernel Account]
-       F --> G[Setup Paymaster]
-       G --> H[Create Client]
-       H --> I[Return Account & Client]
-   ```
+4. **Testing Approach**
+- Test contract interactions
+- Verify UI feedback
+- Check error handling
 
-5. **Configuration Management**
-   - Centralized configuration in `ZERODEV_CONFIG`
-   - Environment validation on initialization
-   - Type-safe configuration access
-   - Consistent usage across the application
+### Core System Architecture
 
-6. **Error Handling**
-   ```typescript
-   try {
-       // Account creation/login logic
-   } catch (error) {
-       console.error('Error creating/logging in with passkey:', error);
-       throw error;
-   }
-   ```
+1. **Passkey Management (`src/lib/passkey.ts`)**
+```typescript
+// Core client setup
+export const publicClient = createPublicClient({
+  chain: baseSepolia,
+  transport: http()
+});
 
-7. **Security Considerations**
-   - Session keys for improved UX
-   - Passkey validation for security
-   - Gasless transactions through paymaster
-   - Permission policies for access control
+// Account creation flow
+export async function handleRegister(username: string) {
+  const webAuthnKey = await toWebAuthnKey({
+    passkeyName: username,
+    passkeyServerUrl: PASSKEY_SERVER_URL,
+    mode: WebAuthnMode.Register
+  });
+  
+  // Create account and return
+  return createAccountWithPasskey(webAuthnKey);
+}
 
-### Implementation Notes
+// Login flow
+export async function loginWithPasskey(username: string) {
+  const webAuthnKey = await toWebAuthnKey({
+    passkeyName: username,
+    passkeyServerUrl: PASSKEY_SERVER_URL,
+    mode: WebAuthnMode.Login
+  });
+  
+  return createAccountWithPasskey(webAuthnKey);
+}
+```
 
-1. **Account Types**
-   - Main account with passkey validator
-   - Session key with permission validator
-   - Combined in kernel account plugins
+2. **Account Context (`src/contexts/AccountContext.tsx`)**
+```typescript
+export function AccountProvider({ children }: { children: ReactNode }) {
+  // Core state
+  const [account, setAccount] = useState<KernelSmartAccountImplementation | null>(null);
+  const [client, setClient] = useState<KernelAccountClient | null>(null);
+  
+  // Helper for sending transactions
+  const sendUserOp = async ({
+    contractAddress,
+    contractABI,
+    functionName,
+    args,
+    onSuccess
+  }) => {
+    if (!account || !client) throw new Error("No account");
+    // Transaction handling...
+  };
 
-2. **Transaction Flow**
-   - Transaction created
-   - Paymaster sponsors gas
-   - Session key or passkey signs
-   - Transaction executed
+  // Auto-login on mount
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      handlePasskeyLogin(storedUsername);
+    }
+  }, []);
+}
+```
 
-3. **Best Practices**
-   - Generate session keys at initialization
-   - Validate configuration early
-   - Handle errors appropriately
-   - Use typed configurations
+3. **Token Balance Management (`src/contexts/TokenBalanceContext.tsx`)**
+```typescript
+export function TokenBalanceProvider({ children }: { children: ReactNode }) {
+  const { account } = useAccount();
+  const [balances, setBalances] = useState<TokenBalances>({});
+  
+  const refreshBalances = useCallback(async () => {
+    if (!account) return;
+    // Fetch balances for all tokens...
+  }, [account]);
 
-4. **Future Considerations**
-   - Session key rotation
-   - Enhanced permission policies
-   - Multiple account support
-   - Recovery mechanisms
+  useEffect(() => {
+    refreshBalances();
+  }, [refreshBalances]);
+}
+```
+
+4. **Application Layout (`src/app/layout.tsx`)**
+```typescript
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>
+          <Header />
+          <main>
+            <AnimatePresence mode="wait">
+              {children}
+            </AnimatePresence>
+          </main>
+          <BottomNav />
+          <Toaster />
+        </Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+5. **Header Component (`src/components/Header.tsx`)**
+```typescript
+export function Header() {
+  const { account, registerPasskey, username, logout } = useAccount();
+  
+  const handleConnect = async () => {
+    const username = `user_${Date.now()}`;
+    await registerPasskey(username);
+  };
+
+  return (
+    <header>
+      {account ? (
+        <AccountInfo /> 
+      ) : (
+        <ConnectButton onClick={handleConnect} />
+      )}
+    </header>
+  );
+}
+```
+
+### Key Integration Points
+
+1. **Provider Hierarchy**
+```typescript
+export function Providers({ children }: { children: ReactNode }) {
+  return (
+    <ThemeProvider>
+      <AccountProvider>
+        <TokenBalanceProvider>
+          {children}
+        </TokenBalanceProvider>
+      </AccountProvider>
+    </ThemeProvider>
+  );
+}
+```
+
+2. **Data Flow**
+```mermaid
+graph TD
+    A[AccountContext] --> B[TokenBalanceContext]
+    B --> C[Components]
+    A --> C
+    D[publicClient] --> A
+    D --> B
+```
+
+3. **Authentication Flow**
+```mermaid
+graph LR
+    A[Header] --> B[AccountContext]
+    B --> C[passkey.ts]
+    C --> D[ZeroDev SDK]
+    D --> E[Blockchain]
+```
+
+### Best Practices
+
+1. **State Management**
+- Use AccountContext for authentication state
+- Use TokenBalanceContext for token data
+- Keep UI state local to components
+- Use callbacks for effect dependencies
+
+2. **Error Handling**
+- Wrap async operations in try/catch
+- Use toast for user feedback
+- Log errors to console
+- Handle loading states
+
+3. **Component Organization**
+- Keep authentication logic in contexts
+- Use shared components for common UI
+- Implement page-specific logic in page components
+- Follow atomic design principles
+
+4. **Performance**
+- Use useCallback for function dependencies
+- Memoize expensive calculations
+- Implement proper loading states
+- Handle data fetching efficiently

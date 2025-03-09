@@ -3,10 +3,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { BottomNav } from "@/components/BottomNav";
-import { Header } from "@/components/Header";
-import { AnimatePresence } from "framer-motion"
-import { DebugInfo } from "@/components/DebugInfo";
 import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
@@ -22,8 +18,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "My PWA App",
-  description: "Progressive Web Application built with Next.js",
+  title: "Smart Portfolio",
+  description: "Decentralized Portfolio Management",
 };
 
 export default function RootLayout({
@@ -37,20 +33,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} dark`}
     >
-      <body
-        style={{
-          position: "fixed",
-          width: "100%",
-          height: "100%",
-        }}
-      >
+      <body>
         <Providers>
-          <Header />
-          <main className="h-[100dvh] pt-16 pb-20 overflow-y-auto">
-            <AnimatePresence mode="wait">{children}</AnimatePresence>
-          </main>
-          <BottomNav />
-          <DebugInfo />
+          {children}
           <Toaster />
         </Providers>
       </body>
