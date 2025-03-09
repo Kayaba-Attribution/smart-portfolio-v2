@@ -23,6 +23,7 @@ import { PortfolioChart } from "@/components/PortfolioChart";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { useAccount } from "@/contexts/AccountContext";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
+import { useUI } from "@/contexts/UIContext";
 
 // Dummy data for portfolio stats
 const PORTFOLIO_STATS = {
@@ -34,10 +35,16 @@ const PORTFOLIO_STATS = {
 function LoginOverlay() {
   const { registerPasskey, loginWithPasskey, isLoading } = useAccount();
   const hasAccount = !!localStorage.getItem("accountAddress");
+  const { setLoginOverlayVisible } = useUI();
 
   const handleRegister = async () => {
-    const username = `user_${Date.now()}`;
-    await registerPasskey(username);
+    try {
+      const username = `user_${Date.now()}`;
+      await registerPasskey();
+      localStorage.setItem("username", username);
+    } catch (error) {
+      console.error("Registration failed:", error);
+    }
   };
 
   const handleLogin = async () => {
@@ -46,8 +53,13 @@ function LoginOverlay() {
     await loginWithPasskey(username);
   };
 
+  // Set login overlay visibility based on account
+  useEffect(() => {
+    setLoginOverlayVisible(!hasAccount);
+  }, [hasAccount, setLoginOverlayVisible]);
+
   return (
-    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black z-[100] flex items-center justify-center">
       <Card className="w-[380px]">
         <CardHeader>
           <CardTitle>Welcome to Smart Portfolio</CardTitle>
@@ -194,6 +206,12 @@ function PortfolioOverview() {
 
 export default function AppPage() {
   const { account, isLoading: accountLoading } = useAccount();
+  const { setLoginOverlayVisible } = useUI();
+
+  // Set login overlay visibility based on account
+  useEffect(() => {
+    setLoginOverlayVisible(!account);
+  }, [account, setLoginOverlayVisible]);
 
   if (accountLoading) {
     return <LoadingAnimation />;

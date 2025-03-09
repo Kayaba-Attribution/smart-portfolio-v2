@@ -9,6 +9,7 @@ import {
   Bell, 
   Settings 
 } from "lucide-react";
+import { useUI } from "@/contexts/UIContext";
 
 const navItems = [
   { href: "/", label: "Portfolio", icon: LayoutDashboard },
@@ -20,7 +21,11 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { isLoginOverlayVisible } = useUI();
 
+  // Don't render if login overlay is visible
+  if (isLoginOverlayVisible) return null;
+  
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-background border-t z-40 pb-[env(safe-area-inset-bottom)]">
       <div className="flex justify-around items-stretch h-20">

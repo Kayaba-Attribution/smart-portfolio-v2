@@ -4,11 +4,13 @@ import { useAccount } from "@/contexts/AccountContext";
 import { Button } from "./ui/button";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useUI } from "@/contexts/UIContext";
 
 export function Header() {
   const { account, isLoading, error, registerPasskey, username, logout } =
     useAccount();
   const [accountAddress, setAccountAddress] = useState<string>("");
+  const { isLoginOverlayVisible } = useUI();
 
   useEffect(() => {
     const getAddress = async () => {
@@ -28,6 +30,9 @@ export function Header() {
       console.error("Failed to register passkey:", err);
     }
   };
+
+  // Don't render if login overlay is visible
+  if (isLoginOverlayVisible) return null;
 
   return (
     <div className="fixed top-0 left-0 right-0 h-16 border-b bg-background z-50">
