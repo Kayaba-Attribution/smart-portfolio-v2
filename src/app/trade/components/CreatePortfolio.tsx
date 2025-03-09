@@ -24,7 +24,7 @@ import {
 
 import { useTokenBalances, TOKENS } from "@/contexts/TokenBalanceContext";
 import Image from "next/image";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useAccount } from "@/contexts/AccountContext";
 import { parseUnits } from "viem";
 import ERC20_ABI from "@/contracts/artifacts/ERC20_BASE.json";
 import addresses from "@/contracts/addresses.json";
@@ -36,6 +36,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { publicClient } from "@/lib/web3";
 
 // Risk template definitions
 type RiskTemplate = {
@@ -113,42 +114,58 @@ export function CreatePortfolio() {
   const [showInfo, setShowInfo] = useState(true);
   const { tokens } = useTokenBalances();
   const [allowance, setAllowance] = useState<bigint>(BigInt(0));
-  const { address: userAddress } = useAccount();
-  const { writeContractAsync: approveToken } = useWriteContract();
+  const { account, sendUserOp } = useAccount();
   const [isAddingToken, setIsAddingToken] = useState(false);
   const [newToken, setNewToken] = useState({ symbol: "", allocation: 0 });
   const [totalAllocation, setTotalAllocation] = useState(0);
+  const [isApproving, setIsApproving] = useState(false);
+
+  // Move checkAllowance outside useEffect
+  const checkAllowance = async () => {
+    if (!account) return;
+
+    const accountAddress = await account.getAddress();
+    const allowance = (await publicClient.readContract({
+      address: addresses.tokens.USDC as `0x${string}`,
+      abi: ERC20_ABI.abi,
+      functionName: "allowance",
+      args: [accountAddress, addresses.core.SmartPortfolio as `0x${string}`],
+    })) as bigint;
+
+    setAllowance(allowance);
+  };
 
   // Get allowance data
-  const { data: allowanceData, refetch: refetchAllowance } = useReadContract({
-    address: addresses.tokens.USDC as `0x${string}`,
-    abi: ERC20_ABI.abi,
-    functionName: "allowance",
-    args: userAddress ? [userAddress, addresses.core.SmartPortfolio as `0x${string}`] : undefined,
-  });
-
-  // Update allowance when data changes
   useEffect(() => {
-    if (allowanceData !== undefined) {
-      setAllowance(allowanceData as bigint);
-    }
-  }, [allowanceData]);
+    checkAllowance();
+  }, [account]);
 
   // Handle token approval
   const handleApprove = async () => {
+    if (!account) return;
+
     try {
-      await approveToken({
-        address: addresses.tokens.USDC as `0x${string}`,
-        abi: ERC20_ABI.abi,
+      setIsApproving(true);
+
+      const userOpHash = await sendUserOp({
+        contractAddress: addresses.tokens.USDC,
+        contractABI: ERC20_ABI.abi,
         functionName: "approve",
         args: [
           addresses.core.SmartPortfolio as `0x${string}`,
           parseUnits("999999999", 18), // Max approval amount
         ],
+        onSuccess: () => {
+          // Refresh allowance after successful approval
+          checkAllowance();
+        },
       });
-      await refetchAllowance();
+
+      console.log("Approval transaction sent:", userOpHash);
     } catch (error) {
       console.error("Error approving token:", error);
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -161,22 +178,27 @@ export function CreatePortfolio() {
 
   // Update total allocation when tokens change
   useEffect(() => {
-    const total = customTokens.reduce((sum, token) => sum + token.allocation, 0);
+    const total = customTokens.reduce(
+      (sum, token) => sum + token.allocation,
+      0
+    );
     setTotalAllocation(total);
   }, [customTokens]);
 
   // Update total allocation when new token changes
   useEffect(() => {
-    const total = customTokens.reduce((sum, token) => sum + token.allocation, 0) + newToken.allocation;
+    const total =
+      customTokens.reduce((sum, token) => sum + token.allocation, 0) +
+      newToken.allocation;
     setTotalAllocation(total);
   }, [customTokens, newToken.allocation]);
 
   const handleAddToken = () => {
     if (!newToken.symbol || customTokens.length >= 5) return;
-    
+
     const totalWithNew = totalAllocation;
     if (totalWithNew > 100) return;
-    
+
     const updatedTokens = [...customTokens, newToken];
     setCustomTokens(updatedTokens);
     setNewToken({ symbol: "", allocation: 0 });
@@ -185,23 +207,23 @@ export function CreatePortfolio() {
 
   const handleRemoveToken = (index: number) => {
     const newTokens = customTokens.filter((_, i) => i !== index);
-    
+
     if (newTokens.length > 0) {
       // Recalculate allocations
       const equalShare = Math.floor(100 / newTokens.length);
       const totalEqualShares = equalShare * newTokens.length;
       const remainder = 100 - totalEqualShares;
-      
+
       newTokens.forEach((token) => {
         token.allocation = equalShare;
       });
-      
+
       // Distribute remainder if any
       for (let i = 0; i < remainder; i++) {
         newTokens[i].allocation += 1;
       }
     }
-    
+
     setCustomTokens(newTokens);
   };
 
@@ -209,26 +231,26 @@ export function CreatePortfolio() {
   //   const newTokens = [...customTokens];
   //   const oldAllocation = newTokens[index].allocation;
   //   const difference = value - oldAllocation;
-    
+
   //   // Don't proceed if trying to set below 0 or above 100
   //   if (value < 0 || value > 100) return;
-    
+
   //   // Calculate total allocation excluding current token
-  //   const totalOthers = newTokens.reduce((sum, token, idx) => 
+  //   const totalOthers = newTokens.reduce((sum, token, idx) =>
   //     idx !== index ? sum + token.allocation : sum, 0);
-    
+
   //   // Don't proceed if this would make total allocation exceed 100
   //   if (totalOthers + value > 100) return;
-    
+
   //   // Update current token allocation
   //   newTokens[index].allocation = value;
-    
+
   //   // Distribute remaining percentage among other tokens proportionally
   //   const remaining = 100 - value;
   //   if (remaining > 0 && newTokens.length > 1) {
   //     const otherTokens = newTokens.filter((_, idx) => idx !== index);
   //     const totalOtherAllocations = otherTokens.reduce((sum, token) => sum + token.allocation, 0);
-      
+
   //     newTokens.forEach((token, idx) => {
   //       if (idx !== index) {
   //         if (totalOtherAllocations === 0) {
@@ -241,7 +263,7 @@ export function CreatePortfolio() {
   //       }
   //     });
   //   }
-    
+
   //   setCustomTokens(newTokens);
   // };
 
@@ -530,11 +552,20 @@ export function CreatePortfolio() {
             placeholder="Enter amount in USDC"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            disabled={!account}
           />
         </div>
-        {allowance === BigInt(0) ? (
-          <Button className="w-[200px]" onClick={handleApprove}>
-            Approve USDC Spending
+        {!account ? (
+          <Button className="w-[200px]" disabled>
+            Connect Account First
+          </Button>
+        ) : allowance === BigInt(0) ? (
+          <Button
+            className="w-[200px]"
+            onClick={handleApprove}
+            disabled={isApproving}
+          >
+            {isApproving ? "Approving..." : "Approve USDC Spending"}
           </Button>
         ) : (
           <Button className="w-[200px]">Create Portfolio</Button>

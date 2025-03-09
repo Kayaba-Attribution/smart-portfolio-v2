@@ -25,6 +25,7 @@ import { TokenBalanceDisplay } from "@/components/TokenBalanceDisplay";
 import { useTokenBalances } from "@/contexts/TokenBalanceContext";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
+import { useAccount } from "@/contexts/AccountContext";
 
 // Add the URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -205,6 +206,7 @@ const PORTFOLIO_STATS = {
 
 function PortfolioOverview() {
   const { balances, refreshBalances, isLoading } = useTokenBalances();
+  const { account } = useAccount();
 
   // Calculate total portfolio value
   const totalValue = Object.entries(balances).reduce(
@@ -215,6 +217,17 @@ function PortfolioOverview() {
     },
     0
   );
+
+  if (!account) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <CardTitle>Connect Your Account</CardTitle>
+        <CardDescription>
+          Please connect your account to view your portfolio
+        </CardDescription>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -426,6 +439,7 @@ function DebugOverlay() {
 }
 
 export default function Page() {
+  const { account, isLoading: accountLoading } = useAccount();
   const [isStandalone, setIsStandalone] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -438,13 +452,13 @@ export default function Page() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (isLoading) {
+  if (isLoading || accountLoading) {
     return <LoadingAnimation />;
   }
 
   return (
     <PageWrapper>
-      {!isStandalone ? (
+      {!isStandalone && !account ? (
         <div className="min-h-screen flex flex-col items-center justify-center p-4">
           <InstallPrompt />
         </div>

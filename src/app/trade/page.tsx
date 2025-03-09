@@ -18,9 +18,7 @@ export default function TradePage() {
             <Button
               variant="ghost"
               className={`flex-1 flex items-center justify-center gap-2 py-6 rounded-none relative ${
-                mode === "portfolio"
-                  ? "text-primary"
-                  : "text-muted-foreground"
+                mode === "portfolio" ? "text-primary" : "text-muted-foreground"
               }`}
               onClick={() => setMode("portfolio")}
             >
@@ -33,9 +31,7 @@ export default function TradePage() {
             <Button
               variant="ghost"
               className={`flex-1 flex items-center justify-center gap-2 py-6 rounded-none relative ${
-                mode === "swap"
-                  ? "text-primary"
-                  : "text-muted-foreground"
+                mode === "swap" ? "text-primary" : "text-muted-foreground"
               }`}
               onClick={() => setMode("swap")}
             >
@@ -52,7 +48,6 @@ export default function TradePage() {
       {/* Content */}
       <div className="max-w-[1200px] mx-auto p-6">
         {mode === "portfolio" ? (
-          
           <CreatePortfolio />
         ) : (
           <div className="h-[400px] flex items-center justify-center text-muted-foreground">
