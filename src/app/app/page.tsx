@@ -31,6 +31,58 @@ const PORTFOLIO_STATS = {
   lastUpdated: new Date().toLocaleTimeString(),
 };
 
+function LoginOverlay() {
+  const { registerPasskey, loginWithPasskey, isLoading } = useAccount();
+  const hasAccount = !!localStorage.getItem("accountAddress");
+
+  const handleRegister = async () => {
+    const username = `user_${Date.now()}`;
+    await registerPasskey(username);
+  };
+
+  const handleLogin = async () => {
+    const username = localStorage.getItem("username");
+    if (!username) return;
+    await loginWithPasskey(username);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-50">
+      <Card className="w-[380px]">
+        <CardHeader>
+          <CardTitle>Welcome to Smart Portfolio</CardTitle>
+          <CardDescription>
+            {hasAccount
+              ? "Sign in to access your portfolio"
+              : "Create an account to get started"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {hasAccount ? (
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleLogin}
+              disabled={isLoading}
+            >
+              {isLoading ? "Signing in..." : "Sign In with Passkey"}
+            </Button>
+          ) : (
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleRegister}
+              disabled={isLoading}
+            >
+              {isLoading ? "Creating Account..." : "Create Account"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function PortfolioOverview() {
   const { balances, refreshBalances, isLoading } = useTokenBalances();
   const { account } = useAccount();
@@ -142,23 +194,15 @@ function PortfolioOverview() {
 
 export default function AppPage() {
   const { account, isLoading: accountLoading } = useAccount();
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Simulate loading time
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (isLoading || accountLoading) {
+  if (accountLoading) {
     return <LoadingAnimation />;
   }
 
   return (
     <PageWrapper>
       <PortfolioOverview />
+      {!account && <LoginOverlay />}
     </PageWrapper>
   );
 }

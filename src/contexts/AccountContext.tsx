@@ -1,14 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-import type { KernelAccountClient, KernelSmartAccountImplementation } from "@zerodev/sdk";
+import { createContext, useContext, useState, ReactNode } from "react";
+import type {
+  KernelAccountClient,
+  KernelSmartAccountImplementation,
+} from "@zerodev/sdk";
 import { handleRegister, loginWithPasskey } from "@/lib/passkey";
 import { encodeFunctionData } from "viem";
 
@@ -36,66 +33,60 @@ interface AccountContextType {
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
 
 export function AccountProvider({ children }: { children: ReactNode }) {
-  const [account, setAccount] = useState<KernelSmartAccountImplementation | null>(null);
+  const [account, setAccount] =
+    useState<KernelSmartAccountImplementation | null>(null);
   const [client, setClient] = useState<KernelAccountClient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [isSendingUserOp, setIsSendingUserOp] = useState(false);
-  const [userOpStatus, setUserOpStatus] = useState('');
-  const [userOpHash, setUserOpHash] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [isSendingUserOp, setIsSendingUserOp] = useState(false);
+  const [userOpStatus, setUserOpStatus] = useState("");
+  const [userOpHash, setUserOpHash] = useState<string | null>(null);
 
   const handlePasskeyRegistration = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Generate a unique username
-      const newUsername = `user_${Date.now()}`;
-      
-      // Now properly use the returned account and client
       const { account: newAccount, client: newClient } = await handleRegister();
-      
-      // Store both the address and username
-      localStorage.setItem("accountAddress", newAccount.address);
-      localStorage.setItem("username", newUsername);
-      
       setAccount(newAccount);
       setClient(newClient);
-      setUsername(newUsername);
+      const address = await newAccount.getAddress();
+      localStorage.setItem("accountAddress", address);
     } catch (err) {
+      console.error("Error creating account:", err);
       setError(
-        err instanceof Error ? err : new Error("Failed to register passkey")
+        err instanceof Error ? err : new Error("Failed to create account")
       );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePasskeyLogin = async (usernameToLogin: string) => {
+  const handlePasskeyLogin = async (username: string) => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      setError(null);
       const { account: newAccount, client: newClient } = await loginWithPasskey(
-        usernameToLogin
+        username
       );
-      localStorage.setItem("accountAddress", newAccount.address);
       setAccount(newAccount);
       setClient(newClient);
-      setUsername(usernameToLogin);
+      setUsername(username);
     } catch (err) {
+      console.error("Error logging in:", err);
       setError(err instanceof Error ? err : new Error("Failed to login"));
+      // Clear stored data on login failure
+      localStorage.removeItem("username");
+      localStorage.removeItem("accountAddress");
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   const handleLogout = () => {
     setAccount(null);
     setClient(null);
     setUsername(null);
-    localStorage.removeItem("accountAddress");
     localStorage.removeItem("username");
+    localStorage.removeItem("accountAddress");
   };
 
   const handleSendUserOp = async ({
@@ -117,62 +108,48 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsSendingUserOp(true);
-      setUserOpStatus('Sending UserOp...');
-      
+      setUserOpStatus("Sending UserOp...");
+
       const userOpHash = await client.sendUserOperation({
-        callData: await account.encodeCalls([{
-          to: contractAddress as `0x${string}`,
-          value: BigInt(0),
-          data: encodeFunctionData({
-            abi: contractABI,
-            functionName,
-            args,
-          }),
-        }]),
+        callData: await account.encodeCalls([
+          {
+            to: contractAddress as `0x${string}`,
+            value: BigInt(0),
+            data: encodeFunctionData({
+              abi: contractABI,
+              functionName,
+              args,
+            }),
+          },
+        ]),
       });
-      
+
       setUserOpHash(userOpHash);
-      
+
       await client.waitForUserOperationReceipt({
         hash: userOpHash,
       });
-      
+
       // Update the message based on the count of UserOps
       const userOpMessage = `UserOp completed. <a href="https://jiffyscan.xyz/userOpHash/${userOpHash}?network=sepolia" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700">Click here to view.</a>`;
-      
+
       setUserOpStatus(userOpMessage);
-      
+
       // Call the onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
-      
+
       return userOpHash;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to send UserOp";
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to send UserOp";
       setUserOpStatus(`Error: ${errorMessage}`);
       throw err;
     } finally {
       setIsSendingUserOp(false);
     }
   };
-
-  // Auto-connect logic
-  useEffect(() => {
-    const storedUsername = localStorage.getItem("username");
-    const storedAddress = localStorage.getItem("accountAddress");
-    
-    if (storedUsername && storedAddress) {
-      setUsername(storedUsername);
-      // Try to login with the stored username
-      handlePasskeyLogin(storedUsername).catch(err => {
-        console.error("Auto-login failed:", err);
-        // If auto-login fails, clear the stored data
-        localStorage.removeItem("username");
-        localStorage.removeItem("accountAddress");
-      });
-    }
-  }, []);
 
   return (
     <AccountContext.Provider
