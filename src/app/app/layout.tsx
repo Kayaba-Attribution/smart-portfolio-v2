@@ -4,8 +4,18 @@ import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { DebugInfo } from "@/components/DebugInfo";
 import { AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  // Add data attribute to html element for app routes
+  useEffect(() => {
+    document.documentElement.setAttribute("data-app-route", "true");
+
+    return () => {
+      document.documentElement.removeAttribute("data-app-route");
+    };
+  }, []);
+
   return (
     <div
       style={{
