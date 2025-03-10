@@ -39,10 +39,21 @@ export default function LandingPage() {
   const router = useRouter();
   const [isStandalone, setIsStandalone] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Check if running as PWA
-    const isPWA = window.matchMedia("(display-mode: standalone)").matches;
+    setMounted(true);
+
+    // More robust PWA detection
+    const isPWA =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      document.referrer.includes("android-app://");
+
+    console.log("PWA detection:", {
+      matchMedia: window.matchMedia("(display-mode: standalone)").matches,
+      referrer: document.referrer.includes("android-app://"),
+    });
+
     setIsStandalone(isPWA);
 
     // If PWA, redirect to app
@@ -51,7 +62,10 @@ export default function LandingPage() {
     }
   }, [router]);
 
-  // Show landing page only for web
+  // Only render content after client-side detection
+  if (!mounted) return null;
+
+  // For PWA mode, don't show landing page
   if (isStandalone) return null;
 
   return (
@@ -565,7 +579,7 @@ export default function LandingPage() {
                           <span className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-1">
                             2
                           </span>
-                            <p>Select &quot;Add to Home Screen&quot;</p>
+                          <p>Select &quot;Add to Home Screen&quot;</p>
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-1">
