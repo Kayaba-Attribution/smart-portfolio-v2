@@ -60,6 +60,7 @@
 │   │       ├── skeleton.tsx
 │   │       ├── slider.tsx
 │   │       ├── sonner.tsx
+│   │       ├── switch.tsx
 │   │       ├── table.tsx
 │   │       └── tabs.tsx
 │   ├── config
@@ -80,4 +81,4 @@
 ├── tailwind.config.ts
 └── tsconfig.json
 
-16 directories, 64 files
+16 directories, 65 files

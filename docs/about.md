@@ -51,6 +51,116 @@ const handleCreatePortfolio = async () => {
 };
 ```
 
+### PWA Implementation & Landing Page
+
+1. **PWA Detection (`src/app/page.tsx`)**
+```typescript
+// Robust PWA detection
+useEffect(() => {
+  setMounted(true);
+
+  // Multiple detection methods for cross-browser compatibility
+  const isPWA =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    document.referrer.includes("android-app://");
+  
+  console.log("PWA detection:", {
+    matchMedia: window.matchMedia("(display-mode: standalone)").matches,
+    referrer: document.referrer.includes("android-app://"),
+  });
+  
+  setIsStandalone(isPWA);
+
+  // Redirect to app view if PWA
+  if (isPWA) {
+    router.push("/app");
+  }
+}, [router]);
+
+// Only render content after client-side detection
+if (!mounted) return null;
+
+// For PWA mode, don't show landing page
+if (isStandalone) return null;
+```
+
+2. **App Layout Management (`src/app/app/layout.tsx`)**
+```typescript
+export default function AppLayout({ children }) {
+  // Add data attribute to html element for app routes
+  useEffect(() => {
+    document.documentElement.setAttribute("data-app-route", "true");
+    
+    return () => {
+      document.documentElement.removeAttribute("data-app-route");
+    };
+  }, []);
+
+  return (
+    <div style={{ position: "fixed", width: "100%", height: "100%" }}>
+      <Header />
+      <main className="h-[100dvh] pt-16 pb-20 overflow-y-auto">
+        <AnimatePresence mode="wait">{children}</AnimatePresence>
+      </main>
+      <BottomNav />
+    </div>
+  );
+}
+```
+
+3. **Conditional Styling (`src/app/globals.css`)**
+```css
+/* Modified styles to allow scrolling on landing page but not in app */
+html {
+  overscroll-behavior: none;
+  background-color: black;
+}
+
+/* App-specific styles applied only to app routes */
+html[data-app-route="true"] {
+  overflow: hidden;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  background-color: black;
+}
+```
+
+4. **Installation Guide Component**
+```typescript
+export function InstallPrompt({ inline = false }) {
+  // PWA detection
+  const [isStandalone, setIsStandalone] = useState(false);
+  
+  const scrollToInstall = () => {
+    const element = document.getElementById("install-guide");
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  return inline ? (
+    <Button
+      variant="outline"
+      size="lg"
+      className="text-lg"
+      onClick={scrollToInstall}
+    >
+      <PlusCircle className="mr-2 h-5 w-5" />
+      How to Install
+    </Button>
+  ) : (
+    <Button onClick={scrollToInstall} variant="outline" size="lg">
+      <PlusCircle className="mr-2 h-5 w-5" />
+      How to Install
+    </Button>
+  );
+}
+```
+
 ### Development Patterns
 
 1. **State Management**
@@ -355,3 +465,11 @@ graph LR
 - Memoize expensive calculations
 - Implement proper loading states
 - Handle data fetching efficiently
+
+5. **PWA Best Practices**
+- Add robust PWA detection with multiple methods
+- Use appropriate viewport settings
+- Implement app-specific scrolling behavior
+- Provide detailed installation instructions
+- Design for both installed and web experiences
+- Use responsive designs for all device types
