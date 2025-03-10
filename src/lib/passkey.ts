@@ -1,156 +1,244 @@
 import {
-    createKernelAccount,
-    createKernelAccountClient,
+  createKernelAccount,
+  createKernelAccountClient,
+  createZeroDevPaymasterClient,
+  getUserOperationGasPrice,
 } from "@zerodev/sdk";
-import { 
-    KERNEL_V3_1,
-    getEntryPoint,
-} from "@zerodev/sdk/constants";
+import { KERNEL_V3_1, getEntryPoint } from "@zerodev/sdk/constants";
 import {
-    WebAuthnMode,
-    toPasskeyValidator,
-    toWebAuthnKey,
-    PasskeyValidatorContractVersion
+  WebAuthnMode,
+  toPasskeyValidator,
+  toWebAuthnKey,
+  PasskeyValidatorContractVersion,
 } from "@zerodev/passkey-validator";
 import { createPublicClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
-
-const BUNDLER_URL = process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL!;
-const PASSKEY_SERVER_URL = process.env.NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL!;
-
-console.log('Environment Variables:', {
-    BUNDLER_URL,
-    PASSKEY_SERVER_URL
-});
-
-if (!BUNDLER_URL || !PASSKEY_SERVER_URL) {
-    throw new Error('Missing required environment variables. Make sure NEXT_PUBLIC_ZERODEV_BUNDLER_URL and NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL are set.');
-}
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { ZERODEV_CONFIG } from "@/config/zerodev";
+import { toECDSASigner } from "@zerodev/permissions/signers";
+import { toSudoPolicy } from "@zerodev/permissions/policies";
+import { toPermissionValidator } from "@zerodev/permissions";
+import type { KernelValidator } from "@zerodev/sdk/types";
+// Validate config on initialization
+ZERODEV_CONFIG.validate();
 
 export const publicClient = createPublicClient({
-    chain: baseSepolia,
-    transport: http()
+  chain: ZERODEV_CONFIG.chain,
+  transport: http(),
 });
 
+// Generate session key once
+const sessionPrivateKey = generatePrivateKey();
+const sessionKeySigner = privateKeyToAccount(sessionPrivateKey);
+
 function formatUsername(username: string): string {
-    const formatted = username.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    console.log('Formatted username:', { original: username, formatted });
-    return formatted;
+  const formatted = username.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  console.log("Formatted username:", { original: username, formatted });
+  return formatted;
+}
+
+// Function to be called when "Register" is clicked
+export async function handleRegister() {
+  const webAuthnKey = await toWebAuthnKey({
+    passkeyName: ZERODEV_CONFIG.passkeyName,
+    passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
+    mode: WebAuthnMode.Register,
+    passkeyServerHeaders: {},
+  });
+
+  const passkeyValidator = await toPasskeyValidator(publicClient, {
+    webAuthnKey,
+    entryPoint: ZERODEV_CONFIG.entryPoint,
+    kernelVersion: ZERODEV_CONFIG.kernelVersion,
+    validatorContractVersion: ZERODEV_CONFIG.validatorVersion,
+  });
+
+  const { kernelAccount, kernelClient } = await createAccountAndClient(passkeyValidator);
+  
+  // Return the account and client
+  return { account: kernelAccount, client: kernelClient };
+}
+
+// handleLogin
+export async function handleLogin() {
+  const webAuthnKey = await toWebAuthnKey({
+    passkeyName: ZERODEV_CONFIG.passkeyName,
+    passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
+    mode: WebAuthnMode.Register,
+    passkeyServerHeaders: {},
+  });
+
+  const passkeyValidator = await toPasskeyValidator(publicClient, {
+    webAuthnKey,
+    entryPoint: ZERODEV_CONFIG.entryPoint,
+    kernelVersion: ZERODEV_CONFIG.kernelVersion,
+    validatorContractVersion: ZERODEV_CONFIG.validatorVersion,
+  });
+
+  await createAccountAndClient(passkeyValidator);
+
+  window.alert("Login done.  Try sending UserOps.");
+}
+
+export async function createAccountAndClient(passkeyValidator: KernelValidator) {
+  const kernelAccount = await createKernelAccount(publicClient, {
+    plugins: {
+      sudo: passkeyValidator,
+    },
+    entryPoint: ZERODEV_CONFIG.entryPoint,
+    kernelVersion: KERNEL_V3_1,
+  });
+
+  const kernelClient = createKernelAccountClient({
+    account: kernelAccount,
+    chain: ZERODEV_CONFIG.chain,
+    bundlerTransport: http(ZERODEV_CONFIG.bundlerUrl),
+    client: publicClient,
+    paymaster: {
+      getPaymasterData: (userOperation) => {
+        const zerodevPaymaster = createZeroDevPaymasterClient({
+          chain: ZERODEV_CONFIG.chain,
+          transport: http(ZERODEV_CONFIG.paymasterUrl),
+        });
+        return zerodevPaymaster.sponsorUserOperation({
+          userOperation,
+        });
+      },
+    },
+    userOperation: {
+      estimateFeesPerGas: async ({ bundlerClient }) => {
+        return getUserOperationGasPrice(bundlerClient);
+      },
+    },
+  });
+
+  return { kernelAccount, kernelClient };
 }
 
 export async function createAccountWithPasskey(username: string) {
-    try {
-        console.log('Starting passkey creation...', {
-            username,
-            passkeyServerUrl: PASSKEY_SERVER_URL
-        });
+  try {
+    console.log("Starting passkey creation...", {
+      username,
+      passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
+    });
 
-        const entryPoint = getEntryPoint("0.7");
-        const formattedUsername = formatUsername(username);
+    // Create WebAuthn key
+    const webAuthnKey = await toWebAuthnKey({
+      passkeyName: "SmartPortfolio",
+      passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
+      mode: WebAuthnMode.Register,
+      passkeyServerHeaders: {},
+    });
 
-        console.log('Creating WebAuthn key with params:', {
-            passkeyName: formattedUsername,
-            passkeyServerUrl: PASSKEY_SERVER_URL,
-            mode: WebAuthnMode.Register
-        });
+    // Create passkey validator
+    const passkeyValidator = await toPasskeyValidator(publicClient, {
+      webAuthnKey,
+      entryPoint: ZERODEV_CONFIG.entryPoint,
+      kernelVersion: ZERODEV_CONFIG.kernelVersion,
+      validatorContractVersion: ZERODEV_CONFIG.validatorVersion,
+    });
 
-        // Create WebAuthn key
-        const webAuthnKey = await toWebAuthnKey({
-            passkeyName: formattedUsername,
-            passkeyServerUrl: PASSKEY_SERVER_URL.replace(/\/$/, ''), // Remove trailing slash if present
-            mode: WebAuthnMode.Register
-        });
-        console.log('WebAuthn key created:', webAuthnKey);
+    // Create session key validator
+    const ecdsaSigner = await toECDSASigner({
+      signer: sessionKeySigner,
+    });
 
-        // Create passkey validator
-        console.log('Creating validator with params:', {
-            entryPoint,
-            kernelVersion: KERNEL_V3_1,
-            validatorVersion: PasskeyValidatorContractVersion.V0_0_2
-        });
+    const sudoPolicy = await toSudoPolicy({});
 
-        const validator = await toPasskeyValidator(publicClient, {
-            webAuthnKey,
-            entryPoint,
-            kernelVersion: KERNEL_V3_1,
-            validatorContractVersion: PasskeyValidatorContractVersion.V0_0_2
-        });
-        console.log('Validator created:', validator);
+    const permissionValidator = await toPermissionValidator(publicClient, {
+      signer: ecdsaSigner,
+      policies: [sudoPolicy],
+      entryPoint: ZERODEV_CONFIG.entryPoint,
+      kernelVersion: ZERODEV_CONFIG.kernelVersion,
+    });
 
-        // Create account
-        console.log('Creating kernel account...');
-        const account = await createKernelAccount(publicClient, {
-            plugins: {
-                sudo: validator
-            },
-            entryPoint,
-            kernelVersion: KERNEL_V3_1
-        });
-        console.log('Account created:', {
-            address: account.address,
-            entryPoint,
-            kernelVersion: KERNEL_V3_1
-        });
+    // Create account with both validators
+    const account = await createKernelAccount(publicClient, {
+      plugins: {
+        sudo: passkeyValidator,
+        regular: permissionValidator,
+      },
+      entryPoint: ZERODEV_CONFIG.entryPoint,
+      kernelVersion: ZERODEV_CONFIG.kernelVersion,
+    });
 
-        // Create client
-        console.log('Creating kernel client...');
-        const client = await createKernelAccountClient({
-            account,
-            chain: baseSepolia,
-            bundlerTransport: http(BUNDLER_URL)
-        });
-        console.log('Client created');
+    // Create paymaster client
+    const paymaster = createZeroDevPaymasterClient({
+      chain: ZERODEV_CONFIG.chain,
+      transport: http(ZERODEV_CONFIG.paymasterUrl),
+    });
 
-        return { account, client };
-    } catch (error) {
-        console.error('Error creating passkey account:', error);
-        if (error instanceof Error) {
-            console.error('Error details:', {
-                message: error.message,
-                stack: error.stack
-            });
-        }
-        throw error;
-    }
+    // Create client with proper paymaster configuration
+    const client = await createKernelAccountClient({
+      account,
+      chain: ZERODEV_CONFIG.chain,
+      bundlerTransport: http(ZERODEV_CONFIG.bundlerUrl),
+      paymaster: {
+        getPaymasterData: (userOperation) => {
+          return paymaster.sponsorUserOperation({
+            userOperation,
+          });
+        },
+      },
+    });
+
+    return { account, client };
+  } catch (error) {
+    console.error("Error creating passkey account:", error);
+    throw error;
+  }
 }
 
 export async function loginWithPasskey(username: string) {
-    try {
-        console.log('Starting passkey login...');
+  try {
+    console.log("Starting passkey login...");
 
-        const entryPoint = getEntryPoint("0.7");
-        const formattedUsername = formatUsername(username);
+    const entryPoint = getEntryPoint("0.7");
+    const formattedUsername = formatUsername(username);
 
-        const webAuthnKey = await toWebAuthnKey({
-            passkeyName: formattedUsername,
-            passkeyServerUrl: PASSKEY_SERVER_URL,
-            mode: WebAuthnMode.Login
-        });
+    const webAuthnKey = await toWebAuthnKey({
+      passkeyName: formattedUsername,
+      passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
+      mode: WebAuthnMode.Login,
+    });
 
-        const validator = await toPasskeyValidator(publicClient, {
-            webAuthnKey,
-            entryPoint,
-            kernelVersion: KERNEL_V3_1,
-            validatorContractVersion: PasskeyValidatorContractVersion.V0_0_2
-        });
+    const validator = await toPasskeyValidator(publicClient, {
+      webAuthnKey,
+      entryPoint,
+      kernelVersion: KERNEL_V3_1,
+      validatorContractVersion: PasskeyValidatorContractVersion.V0_0_2,
+    });
 
-        const account = await createKernelAccount(publicClient, {
-            plugins: {
-                sudo: validator
-            },
-            entryPoint,
-            kernelVersion: KERNEL_V3_1
-        });
+    const account = await createKernelAccount(publicClient, {
+      plugins: {
+        sudo: validator,
+      },
+      entryPoint,
+      kernelVersion: KERNEL_V3_1,
+    });
 
-        const client = await createKernelAccountClient({
-            account,
-            chain: baseSepolia,
-            bundlerTransport: http(BUNDLER_URL)
-        });
+    // Create paymaster client
+    const paymasterClient = createZeroDevPaymasterClient({
+      chain: ZERODEV_CONFIG.chain,
+      transport: http(ZERODEV_CONFIG.paymasterUrl),
+    });
 
-        return { account, client };
-    } catch (error) {
-        console.error('Error logging in with passkey:', error);
-        throw error;
-    }
-} 
+    // Create client with proper paymaster configuration
+    const client = await createKernelAccountClient({
+      account,
+      chain: ZERODEV_CONFIG.chain,
+      bundlerTransport: http(ZERODEV_CONFIG.bundlerUrl),
+      paymaster: {
+        getPaymasterData: (userOperation) => {
+          return paymasterClient.sponsorUserOperation({
+            userOperation,
+          });
+        },
+      },
+    });
+
+    return { account, client };
+  } catch (error) {
+    console.error("Error logging in with passkey:", error);
+    throw error;
+  }
+}

@@ -1,49 +1,58 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-import type { KernelAccountClient } from "@zerodev/sdk";
-import { createAccountWithPasskey, loginWithPasskey } from "@/lib/passkey";
-
-// Using a type that matches the account structure without importing problematic types
-type Account = {
-  address: `0x${string}`;
-  // Add other properties we know we'll use
-  signMessage?: (args: { message: string }) => Promise<string>;
-};
+import { createContext, useContext, useState, ReactNode } from "react";
+import type {
+  KernelAccountClient,
+  KernelSmartAccountImplementation,
+} from "@zerodev/sdk";
+import { handleRegister, loginWithPasskey } from "@/lib/passkey";
+import { encodeFunctionData } from "viem";
 
 interface AccountContextType {
-  account: Account | null;
+  account: KernelSmartAccountImplementation | null;
   client: KernelAccountClient | null;
   isLoading: boolean;
   error: Error | null;
-  createPasskeyAccount: (username: string) => Promise<void>;
+  registerPasskey: () => Promise<void>;
   loginWithPasskey: (username: string) => Promise<void>;
+  logout: () => void;
+  username: string | null;
+  sendUserOp: (params: {
+    contractAddress: string;
+    contractABI: any;
+    functionName: string;
+    args: any[];
+    onSuccess?: () => void;
+  }) => Promise<string>;
+  isSendingUserOp: boolean;
+  userOpStatus: string;
+  userOpHash: string | null;
 }
 
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
 
 export function AccountProvider({ children }: { children: ReactNode }) {
-  const [account, setAccount] = useState<Account | null>(null);
+  const [account, setAccount] =
+    useState<KernelSmartAccountImplementation | null>(null);
   const [client, setClient] = useState<KernelAccountClient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
+  const [isSendingUserOp, setIsSendingUserOp] = useState(false);
+  const [userOpStatus, setUserOpStatus] = useState("");
+  const [userOpHash, setUserOpHash] = useState<string | null>(null);
 
-  const handlePasskeyAccount = async (username: string) => {
+  const handlePasskeyRegistration = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      setError(null);
-      const { account: newAccount, client: newClient } =
-        await createAccountWithPasskey(username);
-      localStorage.setItem("accountAddress", newAccount.address);
+      const { account: newAccount, client: newClient } = await handleRegister();
       setAccount(newAccount);
       setClient(newClient);
+      const address = await newAccount.getAddress();
+      localStorage.setItem("accountAddress", address);
     } catch (err) {
+      console.error("Error creating account:", err);
       setError(
         err instanceof Error ? err : new Error("Failed to create account")
       );
@@ -53,26 +62,91 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   };
 
   const handlePasskeyLogin = async (username: string) => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      setError(null);
       const { account: newAccount, client: newClient } = await loginWithPasskey(
         username
       );
-      localStorage.setItem("accountAddress", newAccount.address);
       setAccount(newAccount);
       setClient(newClient);
+      setUsername(username);
     } catch (err) {
+      console.error("Error logging in:", err);
       setError(err instanceof Error ? err : new Error("Failed to login"));
+      // Clear stored data on login failure
+      localStorage.removeItem("username");
+      localStorage.removeItem("accountAddress");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Auto-connect logic will go here
-  useEffect(() => {
-    // TODO: Implement auto-connect from stored account
-  }, []);
+  const handleLogout = () => {
+    setAccount(null);
+    setClient(null);
+    setUsername(null);
+    localStorage.removeItem("username");
+    localStorage.removeItem("accountAddress");
+  };
+
+  const handleSendUserOp = async ({
+    contractAddress,
+    contractABI,
+    functionName,
+    args,
+    onSuccess,
+  }: {
+    contractAddress: string;
+    contractABI: any;
+    functionName: string;
+    args: any[];
+    onSuccess?: () => void;
+  }) => {
+    if (!client || !account || !account.encodeCalls) {
+      throw new Error("Account or client not initialized");
+    }
+
+    try {
+      setIsSendingUserOp(true);
+      setUserOpStatus("Preparing transaction...");
+
+      const userOpHash = await client.sendUserOperation({
+        callData: await account.encodeCalls([
+          {
+            to: contractAddress as `0x${string}`,
+            value: BigInt(0),
+            data: encodeFunctionData({
+              abi: contractABI,
+              functionName,
+              args,
+            }),
+          },
+        ]),
+      });
+
+      setUserOpHash(userOpHash);
+      setUserOpStatus("Transaction sent, waiting for confirmation...");
+
+      await client.waitForUserOperationReceipt({
+        hash: userOpHash,
+      });
+
+      // Update with a clear "completed" phrase for the notification system to detect
+      setUserOpStatus(`Transaction completed. ${userOpHash}`);
+
+      if (onSuccess) {
+        onSuccess();
+      }
+      
+      return userOpHash;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setUserOpStatus(`Error: ${errorMessage}`);
+      throw err;
+    } finally {
+      setIsSendingUserOp(false);
+    }
+  };
 
   return (
     <AccountContext.Provider
@@ -81,8 +155,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         client,
         isLoading,
         error,
-        createPasskeyAccount: handlePasskeyAccount,
+        registerPasskey: handlePasskeyRegistration,
         loginWithPasskey: handlePasskeyLogin,
+        logout: handleLogout,
+        username,
+        sendUserOp: handleSendUserOp,
+        isSendingUserOp,
+        userOpStatus,
+        userOpHash,
       }}
     >
       {children}

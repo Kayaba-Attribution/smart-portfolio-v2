@@ -3,19 +3,36 @@
 import { useAccount } from "@/contexts/AccountContext";
 import { Button } from "./ui/button";
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { useUI } from "@/contexts/UIContext";
 
 export function Header() {
-  const { account, isLoading, error, createPasskeyAccount } = useAccount();
+  const { account, isLoading, error, registerPasskey, username, logout } =
+    useAccount();
+  const [accountAddress, setAccountAddress] = useState<string>("");
+  const { isLoginOverlayVisible } = useUI();
+
+  useEffect(() => {
+    const getAddress = async () => {
+      if (account) {
+        const addr = await account.getAddress();
+        setAccountAddress(addr);
+      }
+    };
+    getAddress();
+  }, [account]);
 
   const handleConnect = async () => {
     try {
-      const username = `user_${Date.now()}`;
-      await createPasskeyAccount(username);
-      console.log("Account created successfully");
+      await registerPasskey();
+      console.log("Passkey registered successfully");
     } catch (err) {
-      console.error("Failed to create account:", err);
+      console.error("Failed to register passkey:", err);
     }
   };
+
+  // Don't render if login overlay is visible
+  if (isLoginOverlayVisible) return null;
 
   return (
     <div className="fixed top-0 left-0 right-0 h-16 border-b bg-background z-50">
@@ -36,10 +53,17 @@ export function Header() {
             )}
 
             {account ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
                 <div className="text-sm">
-                  {account.address.slice(0, 6)}...{account.address.slice(-4)}
+                  {username && <span className="mr-2">{username}</span>}
+                  {accountAddress &&
+                    `${accountAddress.slice(0, 6)}...${accountAddress.slice(
+                      -4
+                    )}`}
                 </div>
+                <Button variant="outline" size="sm" onClick={logout}>
+                  Logout
+                </Button>
               </div>
             ) : (
               <Button onClick={handleConnect} disabled={isLoading}>

@@ -1,522 +1,357 @@
-# Smart Portfolio Application
+## Smart Portfolio Development Guide
 
-## Overview
-Smart Portfolio is a Progressive Web Application (PWA) built for managing crypto portfolios. It provides real-time token balance tracking, portfolio visualization, and trading capabilities on the Base Sepolia network.
+### Core Architecture
 
-## Tech Stack
-
-### Core Technologies
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS with shadcn/ui components
-- **Web3 Integration**: 
-  - Coinbase's OnchainKit for wallet connection
-  - Wagmi for blockchain interactions
-  - Viem for smart contract interactions
-- **State Management**: React Context
-- **Animations**: Framer Motion
-- **Charts**: Recharts
-- **PWA Features**: Service Worker, Push Notifications
-
-### Key Libraries
-- `@coinbase/onchainkit`: Wallet connection and transaction management
-- `wagmi`: Ethereum hooks and utilities
-- `viem`: Ethereum data types and utilities
-- `framer-motion`: Page transitions and animations
-- `recharts`: Portfolio visualization
-- `web-push`: Push notification functionality
-
-## Architecture
-
-### Core Components
-1. **Layout Structure**
-   - Header with wallet connection
-   - Bottom navigation
-   - Main content area with page transitions
-
-2. **Context Providers**
-   - ThemeProvider: Dark/Light mode management
-   - TokenBalanceProvider: Token balance state management
-   - OnchainKitProvider: Web3 functionality
-
-3. **Key Features**
-   - Portfolio tracking and visualization
-   - Token balance display
-   - Faucet integration for test tokens
-   - Push notification system
-   - PWA installation flow
-
-### Context System
-
-1. **TokenBalanceContext**
-   - Central state management for all token balances
-   - Implements real-time balance updates using wagmi's useReadContracts
-   - Key state:
-     ```typescript
-     interface TokenBalanceContextType {
-       balances: TokenBalances;           // Current token balances
-       tokens: Record<string, Token>;     // Token metadata
-       isLoading: boolean;               // Loading state
-       refreshBalances: () => Promise<void>;
-       getSortedTokenBalances: () => Array<{
-         symbol: string;
-         balance: string;
-         value: number;
-       }>;
-     }
-     ```
-   - Balance updates flow:
-     1. Initial load through useReadContracts
-     2. Auto-updates on block changes
-     3. Manual refresh after transactions
-     4. Propagates updates to all components through context
-
-2. **ThemeContext**
-   - Manages application-wide theme state (dark/light)
-   - Persists theme preference
-   - Provides theme toggle functionality
-   - Automatically applies theme classes to root element
-
-3. **Future Contexts (Planned)**
-   - **AccountContext**: 
-     - Will manage user account state
-     - Handle wallet connection status
-     - Store user preferences and settings
-   - **PortfolioContext**: 
-     - Will manage portfolio state
-     - Handle basket creation/management
-     - Track portfolio performance
-     - Manage portfolio transactions
-
-### Web3 Integration Flow
-
-1. **Provider Setup** (`src/components/providers.tsx`)
-   ```typescript
-   <ThemeProvider>
-     <OnchainKitProvider
-       apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
-       chain={baseSepolia}
-     >
-       <TokenBalanceProvider>
-         {children}
-       </TokenBalanceProvider>
-     </OnchainKitProvider>
-   </ThemeProvider>
-   ```
-
-2. **Connection Flow**
-   - OnchainKit provides wallet connection via Coinbase's infrastructure
-   - Supports multiple wallet types including:
-     - Coinbase Wallet
-     - MetaMask
-     - WalletConnect
-   - Auto-connects to previously connected wallets
-   - Handles chain switching to Base Sepolia
-
-3. **Layout Integration** (`src/app/layout.tsx`)
-   - Wraps entire application in providers
-   - Manages viewport settings for mobile
-   - Handles PWA-specific layout requirements
-   - Implements fixed positioning for mobile optimization
-
-### Web3 Features
-
-1. **Wallet Connection**
-   - Implemented through Header component
-   - Provides wallet status display
-   - Shows connected account information
-   - Handles disconnect functionality
-
-2. **Token Balance Management**
-   - Automatic balance updates
-   - Supports multiple ERC20 tokens
-   - Uses wagmi hooks for contract reads
-   - Handles decimal formatting
-
-3. **Transaction Management**
-   - Uses OnchainKit's Transaction components
-   - Provides transaction status updates
-   - Handles transaction sponsorship
-   - Implements toast notifications for status
-
-4. **Smart Contract Interaction**
-   - Uses viem for contract calls
-   - Implements ERC20 standard functions
-   - Handles contract approvals
-   - Manages faucet interactions
-
-### Blockchain Interaction Patterns
-
-1. **Reading from Blockchain** (via TokenBalanceContext)
-   ```typescript
-   // Using wagmi's useReadContracts for batch balance reading
-   const { data: tokenBalances, refetch: refetchAll } = useReadContracts({
-     contracts: Object.values(TOKENS).map((token) => ({
-       address: token.address,
-       abi: ERC20_ABI.abi,
-       functionName: "balanceOf",
-       args: [userAddress],
-     })),
-   });
-   ```
-   - Batch reads all token balances in a single hook
-   - Automatically updates on block changes
-   - Handles formatting with viem's `formatUnits`
-   - Provides refetch capability for manual updates
-
-2. **Writing to Blockchain** (via Faucet Component)
-   ```typescript
-   // Using OnchainKit's Transaction components
-   <Transaction
-     chainId={BASE_SEPOLIA_CHAIN_ID}
-     calls={[{
-       to: tokenAddress,
-       data: encodeFunctionData({
-         abi: ERC20_FAUCET_ABI,
-         functionName: "claimFaucet",
-         args: [],
-       }),
-     }]}
-     isSponsored={true}
-   >
-     <TransactionButton />
-     <TransactionToast />
-   </Transaction>
-   ```
-   Key features:
-   - Transaction sponsorship support
-   - Built-in status tracking
-   - Toast notifications
-   - Error handling
-   - Gas estimation
-
-3. **Transaction Lifecycle**
-   ```typescript
-   const handleStatus = async (status: LifecycleStatus) => {
-     if (status.statusName === 'success') {
-       await refreshBalances();  // Update balances after transaction
-     }
-   };
-   ```
-   Status flow:
-   - Pending: Transaction submitted
-   - Mining: Transaction in mempool
-   - Success: Transaction confirmed
-   - Error: Transaction failed
-
-4. **Contract Interaction Patterns**
-
-   a. **Read Operations**
-   ```typescript
-   // Single read example
-   const { data: balance } = useReadContract({
-     address: tokenAddress,
-     abi: ERC20_ABI.abi,
-     functionName: "balanceOf",
-     args: [address],
-   });
-
-   // Batch read example (from TokenBalanceContext)
-   const { data: balances } = useReadContracts({
-     contracts: tokenContracts,
-   });
-   ```
-
-   b. **Write Operations**
-   ```typescript
-   // Direct write using wagmi
-   const { writeContractAsync } = useWriteContract();
-   
-   // Example approval transaction
-   await writeContractAsync({
-     address: tokenAddress,
-     abi: ERC20_ABI.abi,
-     functionName: "approve",
-     args: [spenderAddress, amount],
-   });
-
-   // OnchainKit sponsored transaction
-   <Transaction
-     calls={[{ to: address, data: encodedData }]}
-     isSponsored={true}
-   />
-   ```
-
-5. **Error Handling**
-   ```typescript
-   try {
-     await writeContractAsync(/* ... */);
-   } catch (error) {
-     if (error.code === 'ACTION_REJECTED') {
-       // User rejected transaction
-     } else if (error.code === 'INSUFFICIENT_FUNDS') {
-       // Not enough funds for gas
-     }
-     // Handle other errors
-   }
-   ```
-
-6. **State Updates After Transactions**
-   - Listen for transaction status changes
-   - Refresh relevant data on success
-   - Update UI state accordingly
-   - Handle error states
-   ```typescript
-   const onStatus = async (status: LifecycleStatus) => {
-     switch (status.statusName) {
-       case 'success':
-         await refreshBalances();
-         showSuccessToast();
-         break;
-       case 'error':
-         handleError(status.error);
-         break;
-     }
-   };
-   ```
-
-### Pages
-- `/`: Main portfolio dashboard
-- `/trade`: Trading interface with portfolio creation
-- `/activity`: Transaction activity tracking
-- `/rewards`: Rewards system (planned)
-- `/settings`: Application settings
-
-## Development Notes
-
-### Environment Variables Required
-
-```env
-NEXT_PUBLIC_VAPID_PUBLIC_KEY
-VAPID_PRIVATE_KEY
-NEXT_PUBLIC_ONCHAINKIT_API_KEY
+1. **Account Management (`src/contexts/AccountContext.tsx`)**
+```typescript
+interface AccountContextType {
+  account: KernelSmartAccountImplementation | null;
+  client: KernelAccountClient | null;
+  isLoading: boolean;
+  error: Error | null;
+  sendUserOp: (params: {
+    contractAddress: string;
+    contractABI: any;
+    functionName: string;
+    args: any[];
+    onSuccess?: () => void;
+  }) => Promise<string>;
+}
 ```
 
-
-### Smart Contract Integration
-- Uses Base Sepolia testnet
-- Integrates with ERC20 tokens and faucet contracts
-- Contract addresses managed in `addresses.json`
-
-### PWA Features
-- Installable web application
-- Push notification support
-- Offline capability
-- Service worker for caching
-
-### State Management
-- Uses React Context for global state
-- Token balances managed through TokenBalanceContext
-- Theme preferences stored in ThemeContext
-
-### Styling System
-- Uses CSS variables for theming
-- Responsive design with mobile-first approach
-- Custom animations and transitions
-- Component library built on shadcn/ui
-
-### Web3 Development Flow
-
-1. **Adding New Tokens**
-   ```typescript
-   // Add to TOKENS object in TokenBalanceContext
-   NEWTOKEN: {
-     address: addresses.tokens.NEWTOKEN,
-     symbol: "NEWTOKEN",
-     name: "New Token",
-     decimals: 18,
-     icon: "/icons/newtoken-logo.svg",
-   }
-   ```
-
-2. **Implementing New Contract Interactions**
-   - Add contract ABI to `src/abi` directory
-   - Add contract address to `addresses.json`
-   - Create new contract hooks using wagmi
-   - Implement transaction handling
-
-3. **Testing Web3 Features**
-   - Test on Base Sepolia testnet
-   - Verify contract interactions
-   - Test balance updates
-   - Verify transaction flows
-
-## Development Workflow
-
-### Adding New Features
-1. Create new components in `src/components`
-2. Add new pages in `src/app` directory
-3. Update navigation in `BottomNav.tsx` if needed
-4. Add new context providers if required
-
-### Testing
-- Test on both desktop and mobile devices
-- Verify PWA installation flow
-- Test wallet connection and transactions
-- Verify push notification functionality
-
-### Deployment
-- Ensure all environment variables are set
-- Update contract addresses if needed
-- Test PWA manifest and service worker
-- Verify Base Sepolia network connectivity
-
-## Future Considerations
-- Implementation of swap interface
-- Completion of activity feed
-- Enhancement of rewards system
-- Additional portfolio analytics
-- Multi-chain support
-
-### Smart Contract Architecture
-
-1. **Core Contracts**
-   - **SmartBasket**: Main portfolio management contract
-     - Creates and manages token baskets
-     - Handles portfolio rebalancing
-     - Integrates with Uniswap for swaps
-   - **ERC20 Tokens**: Custom tokens with faucet functionality
-     - Built-in faucet for testing
-     - Standard ERC20 functionality
-     - Access control for minting
-
-2. **Contract Interactions**
-   ```typescript
-   // Creating a portfolio basket
-   const createBasket = async (allocations: TokenAllocation[], usdtAmount: number) => {
-     const tx = await smartBasketContract.createBasket(allocations, usdtAmount);
-     await tx.wait();
-   };
-
-   // Selling a portfolio basket
-   const sellBasket = async (basketIndex: number) => {
-     const tx = await smartBasketContract.sellBasket(basketIndex);
-     await tx.wait();
-   };
-   ```
-
-3. **Contract Addresses**
-   - Managed in `src/contracts/addresses.json`
-   - Currently deployed on Base Sepolia
-   - Structure:
-     ```json
-     {
-       "core": {
-         "Factory": "0x7Ae...",
-         "Router": "0x168...",
-         "SmartPortfolio": "0xb60..."
-       },
-       "tokens": {
-         "USDC": "0xCE8...",
-         "WBASE": "0x180...",
-         // ... other tokens
-       }
-     }
-     ```
-
-4. **Multi-chain Support (Planned)**
-   - Current: Base Sepolia testnet
-   - Future expansion:
-     - Multiple EVM chains
-     - Chain-specific contract deployments
-     - Cross-chain portfolio management
-
-### Contract Features
-
-1. **Portfolio Management**
-   - Create baskets with up to 5 tokens
-   - Custom allocation percentages
-   - Automatic rebalancing
-   - Portfolio value tracking
-
-2. **Token Integration**
-   - Multiple ERC20 tokens
-   - Built-in faucet functionality
-   - Price feed integration (planned)
-   - Liquidity pool integration
-
-3. **Trading Features**
-   - Uniswap V2 integration
-   - Swap functionality
-   - Liquidity provision
-   - Slippage protection
-
-### Development Guidelines
-
-1. **Adding New Contracts**
-   ```typescript
-   // 1. Add ABI to src/contracts/artifacts
-   // 2. Add address to addresses.json
-   // 3. Create contract instance
-   const newContract = new Contract(address, abi, signer);
-   ```
-
 2. **Contract Interaction Pattern**
-   ```typescript
-   // Reading data
-   const balance = await contract.balanceOf(address);
-   
-   // Writing data with OnchainKit
-   <Transaction
-     chainId={BASE_SEPOLIA_CHAIN_ID}
-     calls={[{
-       to: contractAddress,
-       data: encodeFunctionData({...})
-     }]}
-     isSponsored={true}
-   />
-   ```
+```typescript
+// Example from CreatePortfolio.tsx
+const handleCreatePortfolio = async () => {
+  if (!account || !amount) return;
+  
+  try {
+    const allocations = tokens.map((token) => ({
+      tokenAddress: TOKENS[token.symbol].address,
+      percentage: token.allocation,
+      amount: 0, // Contract calculates
+    }));
+
+    const userOpHash = await sendUserOp({
+      contractAddress: addresses.core.SmartPortfolio,
+      contractABI: SMART_PORTFOLIO_ABI.abi,
+      functionName: "createBasket",
+      args: [allocations, amountInWei],
+      onSuccess: () => {
+        toast.success("Success!");
+        // Reset form...
+      },
+    });
+
+    // Show transaction feedback
+    toast.promise(/* ... */);
+  } catch (error) {
+    toast.error(/* ... */);
+  }
+};
+```
+
+### Development Patterns
+
+1. **State Management**
+- Use contexts for global state (Account, TokenBalance)
+- Component-level state with useState
+- Callbacks with useCallback for effect dependencies
+
+2. **Toast Notifications (using Sonner)**
+```typescript
+// Success notification
+toast.success("Operation completed!");
+
+// Error notification
+toast.error("Something went wrong");
+
+// Transaction feedback
+toast.promise(
+  promise,
+  {
+    loading: 'Processing...',
+    success: (data) => 'Success!',
+    error: (err) => 'Error: ' + err.message
+  }
+);
+```
+
+3. **Contract Interaction Flow**
+- Check account connection
+- Format input data
+- Send transaction via sendUserOp
+- Handle success/error with toast
+- Update UI state
+- Refresh relevant data
+
+4. **Common Code Patterns**
+
+a. **Account Check**
+```typescript
+if (!account) return;
+```
+
+b. **Loading States**
+```typescript
+const [isLoading, setIsLoading] = useState(false);
+
+try {
+  setIsLoading(true);
+  // operation
+} finally {
+  setIsLoading(false);
+}
+```
+
+c. **Effect Dependencies**
+```typescript
+const callback = useCallback(() => {
+  // function body
+}, [required, dependencies]);
+
+useEffect(() => {
+  callback();
+}, [callback]);
+```
+
+### File Organization
+
+1. **Contract Artifacts**
+- Place in `src/contracts/artifacts/`
+- Include full ABI with proper typing
+- Export contract addresses from `addresses.json`
+
+2. **Components**
+- UI components in `src/components/`
+- Page components in `src/app/`
+- Context providers in `src/contexts/`
+
+3. **Utilities**
+- Web3 utilities in `src/lib/web3.ts`
+- Shared helpers in `src/lib/utils.ts`
+
+### Common Gotchas
+
+1. **Effect Dependencies**
+- Always include all dependencies
+- Use useCallback for function dependencies
+- Watch for infinite loops
+
+2. **Type Safety**
+- Use proper typing for contract ABIs
+- Handle undefined/null states
+- Type check component props
 
 3. **Error Handling**
-   ```typescript
-   try {
-     const tx = await contract.method();
-     await tx.wait();
-   } catch (error) {
-     if (error.code === 'ACTION_REJECTED') {
-       // User rejected
-     } else if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
-       // Contract error
-     }
-   }
-   ```
+- Always wrap async operations in try/catch
+- Provide user feedback via toast
+- Log errors for debugging
 
-### State Update Flow
+### Development Tips for Cursor
 
-1. **Transaction Updates**
-   ```typescript
-   // Example from Faucet.tsx
-   const handleStatus = async (status: LifecycleStatus) => {
-     if (status.statusName === 'success') {
-       await refreshBalances();  // Updates all token balances
-     }
-   };
-   ```
+1. **Quick Fixes**
+- Look for similar patterns in existing code
+- Check for missing dependencies in useEffect
+- Verify contract ABI matches function calls
 
-2. **Balance Subscription**
-   ```typescript
-   // In TokenBalanceContext
-   useEffect(() => {
-     if (address && tokenBalances) {
-       const newBalances: TokenBalances = {};
-       Object.keys(TOKENS).forEach((symbol, index) => {
-         const balance = tokenBalances[index]?.result;
-         if (balance !== undefined) {
-           newBalances[symbol] = formatUnits(balance, TOKENS[symbol].decimals);
-         }
-       });
-       setBalances(newBalances);
-     }
-   }, [address, tokenBalances]);
-   ```
+2. **Common Commands**
+- "Fix the error on [file]"
+- "Update [component] to use [pattern]"
+- "Add toast notifications to [component]"
 
-3. **Component Integration**
-   ```typescript
-   // Using balances in components
-   const { balances, refreshBalances, isLoading } = useTokenBalances();
-   
-   // Automatic updates when balances change
-   useEffect(() => {
-     // Component UI updates automatically when balances change
-   }, [balances]);
-   ```
+3. **Code Organization**
+- Keep related code together
+- Use consistent formatting
+- Add comments for complex logic
+
+4. **Testing Approach**
+- Test contract interactions
+- Verify UI feedback
+- Check error handling
+
+### Core System Architecture
+
+1. **Passkey Management (`src/lib/passkey.ts`)**
+```typescript
+// Core client setup
+export const publicClient = createPublicClient({
+  chain: baseSepolia,
+  transport: http()
+});
+
+// Account creation flow
+export async function handleRegister(username: string) {
+  const webAuthnKey = await toWebAuthnKey({
+    passkeyName: username,
+    passkeyServerUrl: PASSKEY_SERVER_URL,
+    mode: WebAuthnMode.Register
+  });
+  
+  // Create account and return
+  return createAccountWithPasskey(webAuthnKey);
+}
+
+// Login flow
+export async function loginWithPasskey(username: string) {
+  const webAuthnKey = await toWebAuthnKey({
+    passkeyName: username,
+    passkeyServerUrl: PASSKEY_SERVER_URL,
+    mode: WebAuthnMode.Login
+  });
+  
+  return createAccountWithPasskey(webAuthnKey);
+}
+```
+
+2. **Account Context (`src/contexts/AccountContext.tsx`)**
+```typescript
+export function AccountProvider({ children }: { children: ReactNode }) {
+  // Core state
+  const [account, setAccount] = useState<KernelSmartAccountImplementation | null>(null);
+  const [client, setClient] = useState<KernelAccountClient | null>(null);
+  
+  // Helper for sending transactions
+  const sendUserOp = async ({
+    contractAddress,
+    contractABI,
+    functionName,
+    args,
+    onSuccess
+  }) => {
+    if (!account || !client) throw new Error("No account");
+    // Transaction handling...
+  };
+
+  // Auto-login on mount
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      handlePasskeyLogin(storedUsername);
+    }
+  }, []);
+}
+```
+
+3. **Token Balance Management (`src/contexts/TokenBalanceContext.tsx`)**
+```typescript
+export function TokenBalanceProvider({ children }: { children: ReactNode }) {
+  const { account } = useAccount();
+  const [balances, setBalances] = useState<TokenBalances>({});
+  
+  const refreshBalances = useCallback(async () => {
+    if (!account) return;
+    // Fetch balances for all tokens...
+  }, [account]);
+
+  useEffect(() => {
+    refreshBalances();
+  }, [refreshBalances]);
+}
+```
+
+4. **Application Layout (`src/app/layout.tsx`)**
+```typescript
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>
+          <Header />
+          <main>
+            <AnimatePresence mode="wait">
+              {children}
+            </AnimatePresence>
+          </main>
+          <BottomNav />
+          <Toaster />
+        </Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+5. **Header Component (`src/components/Header.tsx`)**
+```typescript
+export function Header() {
+  const { account, registerPasskey, username, logout } = useAccount();
+  
+  const handleConnect = async () => {
+    const username = `user_${Date.now()}`;
+    await registerPasskey(username);
+  };
+
+  return (
+    <header>
+      {account ? (
+        <AccountInfo /> 
+      ) : (
+        <ConnectButton onClick={handleConnect} />
+      )}
+    </header>
+  );
+}
+```
+
+### Key Integration Points
+
+1. **Provider Hierarchy**
+```typescript
+export function Providers({ children }: { children: ReactNode }) {
+  return (
+    <ThemeProvider>
+      <AccountProvider>
+        <TokenBalanceProvider>
+          {children}
+        </TokenBalanceProvider>
+      </AccountProvider>
+    </ThemeProvider>
+  );
+}
+```
+
+2. **Data Flow**
+```mermaid
+graph TD
+    A[AccountContext] --> B[TokenBalanceContext]
+    B --> C[Components]
+    A --> C
+    D[publicClient] --> A
+    D --> B
+```
+
+3. **Authentication Flow**
+```mermaid
+graph LR
+    A[Header] --> B[AccountContext]
+    B --> C[passkey.ts]
+    C --> D[ZeroDev SDK]
+    D --> E[Blockchain]
+```
+
+### Best Practices
+
+1. **State Management**
+- Use AccountContext for authentication state
+- Use TokenBalanceContext for token data
+- Keep UI state local to components
+- Use callbacks for effect dependencies
+
+2. **Error Handling**
+- Wrap async operations in try/catch
+- Use toast for user feedback
+- Log errors to console
+- Handle loading states
+
+3. **Component Organization**
+- Keep authentication logic in contexts
+- Use shared components for common UI
+- Implement page-specific logic in page components
+- Follow atomic design principles
+
+4. **Performance**
+- Use useCallback for function dependencies
+- Memoize expensive calculations
+- Implement proper loading states
+- Handle data fetching efficiently

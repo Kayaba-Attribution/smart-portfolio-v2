@@ -2,40 +2,51 @@
 
 import { useState } from "react";
 import { useAccount } from "@/contexts/AccountContext";
+import { useTokenBalances } from "@/contexts/TokenBalanceContext";
 import { Button } from "./ui/button";
-import { publicClient } from "@/lib/passkey";
 import addresses from "@/contracts/addresses.json";
-import FAUCET_ABI from "@/contracts/artifacts/SmartBasket.json";
+import { ERC20_FAUCET_ABI } from "../abi/erc20Faucet";
 
 export function Faucet() {
-  const { account, client } = useAccount();
+  const { account, sendUserOp } = useAccount();
+  const { refreshBalances } = useTokenBalances();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleMint = async () => {
-    if (!account || !client) return;
+    if (!account) return;
 
     try {
       setIsLoading(true);
+      setError(null);
 
-      const { request } = await publicClient.simulateContract({
-        account: account.address,
-        address: addresses.faucet as `0x${string}`,
-        abi: FAUCET_ABI.abi,
-        functionName: "mint",
+      // Use the sendUserOp helper from AccountContext with onSuccess callback
+      const userOpHash = await sendUserOp({
+        contractAddress: addresses.tokens.USDC,
+        contractABI: ERC20_FAUCET_ABI,
+        functionName: "claimFaucet",
+        args: [],
+        onSuccess: refreshBalances, // Refresh balances after successful transaction
       });
 
-      const hash = await client.sendTransaction(request);
-      console.log("Mint transaction:", hash);
+      console.log("Mint transaction completed:", userOpHash);
     } catch (error) {
       console.error("Error minting:", error);
+      setError(error instanceof Error ? error.message : "Unknown error occurred");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Button onClick={handleMint} disabled={isLoading || !account}>
-      {isLoading ? "Minting..." : "Get Test Tokens"}
-    </Button>
+    <div>
+      <Button onClick={handleMint} disabled={isLoading || !account}>
+        {isLoading ? "Minting..." : "Get Test Tokens"}
+      </Button>
+      
+      {error && (
+        <div className="text-red-500 mt-2 text-sm">{error}</div>
+      )}
+    </div>
   );
 }

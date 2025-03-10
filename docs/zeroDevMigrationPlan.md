@@ -18,7 +18,7 @@
 
 ## Implementation Phases
 
-### Phase 1: Core SDK Setup
+### Phase 1: Core SDK Setup ✅
 1. Environment Setup
    ```bash
    # Remove OnchainKit
@@ -28,139 +28,131 @@
    npm install @zerodev/sdk @zerodev/passkey-validator viem@latest
    ```
 
-2. Configuration
-   ```typescript
-   // src/config/zerodev.ts
-   import { getEntryPoint, KERNEL_V3_1 } from "@zerodev/sdk/constants";
-   
-   export const ZERODEV_CONFIG = {
-     projectId: process.env.ZERODEV_PROJECT_ID!,
-     bundlerUrl: process.env.ZERODEV_BUNDLER_URL!,
-     paymasterUrl: process.env.ZERODEV_PAYMASTER_URL!,
-     chain: baseSepolia,
-     entryPoint: getEntryPoint("0.7"),
-     kernelVersion: KERNEL_V3_1,
-   };
+2. Environment Variables
+   ```env
+   # Client-side variables with NEXT_PUBLIC_ prefix
+   NEXT_PUBLIC_ZERODEV_PROJECT_ID=your_project_id
+   NEXT_PUBLIC_ZERODEV_BUNDLER_URL=https://rpc.zerodev.app/api/v2/bundler/...
+   NEXT_PUBLIC_ZERODEV_PAYMASTER_URL=https://rpc.zerodev.app/api/v2/paymaster/...
+   NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL=https://passkeys.zerodev.app/api/v3/...
    ```
 
 3. Core Client Setup
    ```typescript
-   // src/lib/zerodev.ts
-   import { 
-     createKernelAccount,
-     createKernelAccountClient,
-     createZeroDevPaymasterClient
+   // src/lib/passkey.ts
+   import {
+       createKernelAccount,
+       createKernelAccountClient,
    } from "@zerodev/sdk";
-   import { http, createPublicClient } from "viem";
+   import { 
+       KERNEL_V3_1,
+       getEntryPoint,
+   } from "@zerodev/sdk/constants";
+   import {
+       WebAuthnMode,
+       toPasskeyValidator,
+       toWebAuthnKey,
+       PasskeyValidatorContractVersion
+   } from "@zerodev/passkey-validator";
    
-   export const publicClient = createPublicClient({
-     chain: ZERODEV_CONFIG.chain,
-     transport: http(ZERODEV_CONFIG.bundlerUrl),
-   });
+   const BUNDLER_URL = process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL!;
+   const PASSKEY_SERVER_URL = process.env.NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL!;
 
-   export const paymasterClient = createZeroDevPaymasterClient({
-     chain: ZERODEV_CONFIG.chain,
-     transport: http(ZERODEV_CONFIG.paymasterUrl),
+   export const publicClient = createPublicClient({
+       chain: baseSepolia,
+       transport: http()
    });
    ```
 
-### Phase 2: Passkey Implementation
-1. Create Passkey Hook
+### Phase 2: Passkey Implementation ✅
+1. Passkey Account Creation
    ```typescript
-   // src/hooks/usePasskeyAccount.ts
-   import { toPasskeyValidator, WebAuthnMode } from "@zerodev/passkey-validator";
-   
-   export function usePasskeyAccount() {
-     const createAccount = async (username: string) => {
+   // src/lib/passkey.ts
+   export async function createAccountWithPasskey(username: string) {
+       const entryPoint = getEntryPoint("0.7");
+       const formattedUsername = formatUsername(username);
+
        const webAuthnKey = await toWebAuthnKey({
-         passkeyName: username,
-         passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
-         mode: WebAuthnMode.Register,
+           passkeyName: formattedUsername,
+           passkeyServerUrl: PASSKEY_SERVER_URL,
+           mode: WebAuthnMode.Register
        });
 
        const validator = await toPasskeyValidator(publicClient, {
-         webAuthnKey,
-         entryPoint: ZERODEV_CONFIG.entryPoint,
-         kernelVersion: ZERODEV_CONFIG.kernelVersion,
+           webAuthnKey,
+           entryPoint,
+           kernelVersion: KERNEL_V3_1,
+           validatorContractVersion: PasskeyValidatorContractVersion.V0_0_2
        });
 
-       return createKernelAccount(publicClient, {
-         plugins: { sudo: validator },
-         entryPoint: ZERODEV_CONFIG.entryPoint,
-         kernelVersion: ZERODEV_CONFIG.kernelVersion,
+       const account = await createKernelAccount(publicClient, {
+           plugins: { sudo: validator },
+           entryPoint,
+           kernelVersion: KERNEL_V3_1
        });
-     };
 
-     return { createAccount };
+       const client = await createKernelAccountClient({
+           account,
+           chain: baseSepolia,
+           bundlerTransport: http(BUNDLER_URL)
+       });
+
+       return { account, client };
    }
    ```
 
-### Phase 3: Core Components Migration
+### Phase 3: Account Context ✅
+```typescript
+// src/contexts/AccountContext.tsx
+interface AccountContextType {
+    account: Account | null;  // Using simplified Account type
+    client: KernelAccountClient | null;
+    isLoading: boolean;
+    error: Error | null;
+    createPasskeyAccount: (username: string) => Promise<void>;
+    loginWithPasskey: (username: string) => Promise<void>;
+}
 
-1. Account Provider
-   ```typescript
-   // src/contexts/AccountContext.ts
-   export function AccountProvider({ children }: { children: React.ReactNode }) {
-     const [account, setAccount] = useState<KernelAccount | null>(null);
-     const [client, setClient] = useState<KernelAccountClient | null>(null);
+type Account = {
+    address: `0x${string}`;
+    signMessage?: (args: { message: string }) => Promise<string>;
+};
+```
 
-     // Account creation and management logic
-     return (
-       <AccountContext.Provider value={{ account, client }}>
-         {children}
-       </AccountContext.Provider>
-     );
-   }
-   ```
+### Phase 4: Debug Support ✅
+```typescript
+// src/components/DebugInfo.tsx
+export function DebugInfo() {
+    if (process.env.NODE_ENV !== 'development') return null;
 
-2. Transaction Handler
-   ```typescript
-   // src/lib/transactions.ts
-   export async function sendTransaction(
-     client: KernelAccountClient,
-     calls: Call[]
-   ) {
-     const userOpHash = await client.sendUserOperation({
-       callData: await client.account.encodeCalls(calls),
-     });
+    return (
+        <div className="fixed bottom-4 right-4 p-4 bg-black/80 text-white rounded-lg text-xs">
+            <div>PASSKEY_URL: {process.env.NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL}</div>
+            <div>BUNDLER_URL: {process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL}</div>
+            <div>PROJECT_ID: {process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID}</div>
+        </div>
+    );
+}
+```
 
-     return client.waitForUserOperationReceipt({
-       hash: userOpHash,
-     });
-   }
-   ```
+## Next Steps
+1. Update Faucet component to use new transaction system
+2. Update CreatePortfolio component
+3. Implement auto-connect functionality
+4. Add transaction status tracking
+5. Implement proper error handling and user feedback
 
-### Phase 4: Component Updates
-
-1. Faucet Component
-   ```typescript
-   // src/components/Faucet.tsx
-   export function Faucet() {
-     const { client } = useAccount();
-     
-     const claimFaucet = async () => {
-       if (!client) return;
-       
-       await sendTransaction(client, [{
-         to: addresses.tokens.USDC,
-         data: encodeFunctionData({
-           abi: ERC20_FAUCET_ABI,
-           functionName: "claimFaucet",
-         }),
-       }]);
-     };
-     
-     return <Button onClick={claimFaucet}>Claim Tokens</Button>;
-   }
-   ```
+## Key Learnings
+1. Environment variables must use NEXT_PUBLIC_ prefix for client-side access
+2. Simplified Account type works better than SDK types
+3. Extensive logging helps debug passkey issues
+4. Username formatting is critical for passkey creation
 
 ## Testing Strategy
-
 1. Core Functionality
-   - Passkey creation and recovery
+   - ✅ Passkey creation
    - Transaction sending
    - Balance updates
-   - Gas sponsorship
 
 2. Mobile Testing
    - PWA + Passkey flow
