@@ -8,11 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "node src/scripts/seedActions.js"
+    "seed": "node src/scripts/seedActions.js",
+    "seed:admin": "node src/scripts/seedActionsAdmin.js"
   },
   "dependencies": {
-    "@coinbase/onchainkit": "^0.36.8",
     "@coinbase/wallet-sdk": "^4.3.0",
+    "@instantdb/admin": "^0.17.29",
     "@instantdb/core": "^0.17.29",
     "@instantdb/react": "^0.17.29",
     "@radix-ui/react-collapsible": "^1.1.2",
@@ -35,6 +36,7 @@
     "motion": "^12.0.6",
     "next": "15.1.6",
     "next-themes": "^0.4.4",
+    "ox": "^0.6.7",
     "permissionless": "^0.2.34",
     "pino-pretty": "^13.0.0",
     "react": "^19.0.0",

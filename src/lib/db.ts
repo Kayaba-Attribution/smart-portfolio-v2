@@ -92,21 +92,36 @@ export async function addPoints(
         // ID to update - either the provided profile ID or assume userId is the ID
         const profileIdToUpdate = userProfileId || userId;
 
-        // Create a points transaction and update the user's total points
+        // Create a points transaction, update the user's total points, and create links
         await db.transact([
             // Create the points transaction
-            tx.pointsTransactions[transactionId].update({
-                userId,
-                actionId,
-                points,
-                timestamp: Date.now(),
-            }),
+            tx.pointsTransactions[transactionId]
+                .update({
+                    userId,
+                    actionId,
+                    points,
+                    timestamp: Date.now(),
+                })
+                // Create links to user profile and action
+                .link({
+                    action: actionId
+                }),
 
             // Update the user's total points
-            tx.userProfiles[profileIdToUpdate].update({
-                // Use a lambda to increment the current value
-                totalPoints: (current: number | undefined) => (current || 0) + points,
-            }),
+            tx.userProfiles[profileIdToUpdate]
+                .update({
+                    // Use a lambda to increment the current value
+                    totalPoints: (current: number | undefined) => (current || 0) + points,
+                })
+                // Create link back to the transaction
+                .link({
+                    pointsTransactions: transactionId
+                }),
+
+            // Create link from action to the transaction
+            tx.actions[actionId].link({
+                transactions: transactionId
+            })
         ]);
 
         console.log(`Added ${points} points to user ${userId} for action ${actionId}`);

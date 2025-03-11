@@ -1,57 +1,25 @@
-import { tx } from '@instantdb/react';
-import { db } from './db';
-
-// Define action names and IDs as constants
+// Define action names and IDs as constants that match the ones in seedActions.js
 export const POINTS_ACTIONS = {
     FAUCET: {
-        id: 'faucet_use',
-        name: 'Use Faucet',
+        id: '33f1576a-456f-4f81-939a-f972aca8ba0e',
+        name: 'FAUCET_USE',
         description: 'Claimed tokens from the faucet',
-        points: 10
+        points: 10,
+        cooldown: 86400000 // 24 hours
     },
     CREATE_PORTFOLIO: {
         id: 'create_portfolio',
-        name: 'Create Portfolio',
+        name: 'PORTFOLIO_CUSTOM_CREATED',
         description: 'Created a new portfolio',
-        points: 25
+        points: 25,
+        cooldown: 86400000 // 24 hours
     },
     DAILY_LOGIN: {
         id: 'daily_login',
-        name: 'Daily Login',
+        name: 'DAILY_LOGIN',
         description: 'Logged in for the day',
-        points: 5
+        points: 5,
+        cooldown: 86400000 // 24 hours
     },
     // Add more actions as needed
 };
-
-/**
- * Ensure the actions exist in the database
- * Call this function during app initialization
- */
-export async function ensureActionsExist() {
-    try {
-        const actions = Object.values(POINTS_ACTIONS);
-
-        // Simple approach: just create all actions with their predefined IDs
-        // If they already exist, the transaction will succeed but not change anything
-        const actionTransactions = actions.map(action =>
-            tx.actions[action.id].update({
-                name: action.name,
-                description: action.description,
-                points: action.points
-            })
-        );
-
-        if (actionTransactions.length > 0) {
-            await db.transact(actionTransactions);
-            console.log('Actions initialized successfully');
-        }
-    } catch (error) {
-        console.error('Error ensuring actions exist:', error);
-        // Log more detailed error information to help debug
-        if (error instanceof Error) {
-            console.error('Error details:', error.message);
-            console.error('Error stack:', error.stack);
-        }
-    }
-} 

@@ -1,18 +1,19 @@
 // This script will seed the database with initial action data for the points system
-// Run with: node src/scripts/seedActions.js
+// Run with: node src/scripts/seedActionsAdmin.js
 
-import { init, tx, id } from "@instantdb/core";
+import { init, id } from "@instantdb/admin";
 import dotenv from "dotenv";
 
 // Import environment variables
 dotenv.config();
 
-// Initialize InstantDB
+// Initialize InstantDB with admin access
 const appId = process.env.NEXT_PUBLIC_INSTANT_APP_ID;
+const adminToken = process.env.INSTANT_APP_ADMIN_TOKEN;
 
-if (!appId) {
+if (!appId || !adminToken) {
   console.error(
-    "NEXT_PUBLIC_INSTANT_APP_ID is not defined in environment variables"
+    "NEXT_PUBLIC_INSTANT_APP_ID or INSTANT_APP_ADMIN_TOKEN is not defined in environment variables"
   );
   process.exit(1);
 }
@@ -63,44 +64,19 @@ const actionsToSeed = [
   },
 ];
 
-// Initialize InstantDB with the schema
+// Initialize InstantDB Admin SDK
 const db = init({
   appId,
+  adminToken,
 });
 
 async function seedActions() {
   console.log("🌱 Seeding actions...");
 
   try {
-    // In the core package, we need to use subscribeQuery instead of query
-    // Create a promise to handle the async response
-    const getExistingActions = () => {
-      return new Promise((resolve, reject) => {
-        let unsubscribe;
-
-        // Set a timeout in case the query never returns
-        const timeout = setTimeout(() => {
-          if (unsubscribe) unsubscribe();
-          reject(new Error("Query timed out after 10 seconds"));
-        }, 10000);
-
-        unsubscribe = db.subscribeQuery({ actions: {} }, (response) => {
-          clearTimeout(timeout);
-          if (unsubscribe) unsubscribe();
-
-          if (response.error) {
-            reject(response.error);
-            return;
-          }
-
-          resolve(response.data || { actions: [] });
-        });
-      });
-    };
-
-    // Get existing actions
-    const result = await getExistingActions();
-    const existingActions = result.actions || [];
+    // With the admin SDK, we can directly query the database
+    const data = await db.query({ actions: {} });
+    const existingActions = data.actions || [];
     console.log(`Found ${existingActions.length} existing actions`);
 
     // Create a map of existing action names
@@ -119,7 +95,7 @@ async function seedActions() {
 
         // Update the existing action
         transactions.push(
-          tx.actions[actionId].update({
+          db.tx.actions[actionId].update({
             description: action.description,
             points: action.points,
             cooldown: action.cooldown,
@@ -131,7 +107,7 @@ async function seedActions() {
         console.log(`Creating new action: ${action.name}`);
 
         transactions.push(
-          tx.actions[actionId].update({
+          db.tx.actions[actionId].update({
             name: action.name,
             description: action.description,
             points: action.points,
@@ -144,20 +120,16 @@ async function seedActions() {
     // Execute all transactions
     if (transactions.length > 0) {
       const txResult = await db.transact(transactions);
-      console.log(
-        `✅ Successfully seeded ${transactions.length} actions`,
-        txResult
-      );
+      console.log(`✅ Successfully seeded ${transactions.length} actions`);
     } else {
       console.log("No new actions to seed");
     }
-
-    // Exit after a short delay to ensure transactions are processed
-    setTimeout(() => process.exit(0), 2000);
   } catch (error) {
     console.error("❌ Error seeding actions:", error);
     process.exit(1);
   }
+
+  process.exit(0);
 }
 
 // Run the seed function
