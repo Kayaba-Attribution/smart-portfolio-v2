@@ -25,7 +25,6 @@ import { useAccount } from "@/contexts/AccountContext";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
 import { useUI } from "@/contexts/UIContext";
 import PointsDisplay from "@/components/PointsDisplay";
-import { Input } from "@/components/ui/input";
 import { AccountDebug } from "@/components/AccountDebug";
 
 // Dummy data for portfolio stats
@@ -38,60 +37,27 @@ const PORTFOLIO_STATS = {
 function LoginOverlay() {
   const { registerPasskey, loginWithPasskey, isLoading } = useAccount();
   const [hasAccount, setHasAccount] = useState(false);
-  const [username, setUsername] = useState("");
-  const [loginUsername, setLoginUsername] = useState("");
   const [registrationError, setRegistrationError] = useState<string | null>(
     null
   );
-  const [checkingPasskey, setCheckingPasskey] = useState(true);
 
   // Check for existing account on client-side only
   useEffect(() => {
-    const checkPasskeys = async () => {
-      setCheckingPasskey(true);
-      try {
-        // Import dynamically to avoid server-side issues
-        const { checkPasskeyExists } = await import("@/lib/passkey");
-
-        const savedUsername = localStorage.getItem("username");
-        if (savedUsername) {
-          setLoginUsername(savedUsername);
-
-          // Verify if the passkey actually exists
-          const passkeyExists = await checkPasskeyExists(savedUsername);
-          setHasAccount(passkeyExists);
-
-          // If no passkey found but localStorage has data, clean it up
-          if (!passkeyExists) {
-            localStorage.removeItem("accountAddress");
-            localStorage.removeItem("username");
-          }
-        } else {
-          setHasAccount(false);
-        }
-      } catch (error) {
-        console.error("Error checking passkeys:", error);
-        setHasAccount(false);
-      } finally {
-        setCheckingPasskey(false);
-      }
-    };
-
-    checkPasskeys();
+    const savedAddress = localStorage.getItem("accountAddress");
+    setHasAccount(!!savedAddress);
   }, []);
 
   const handleRegister = async () => {
-    if (!username || username.trim() === "") {
-      setRegistrationError("Username is required");
-      return;
-    }
-
     try {
       setRegistrationError(null);
-      console.log("Registering with username:", username);
-      await registerPasskey(username);
+      console.log("Creating new passkey");
+
+      // Generate a temp ID as placeholder - will be replaced by wallet address
+      const tempId = `temp_${Date.now().toString(36)}`;
+      await registerPasskey(tempId);
     } catch (error) {
       console.error("Registration failed:", error);
+
       // Extract the most useful error message
       let errorMessage = "Registration failed";
 
@@ -107,7 +73,7 @@ function LoginOverlay() {
             "Registration timed out or was cancelled. Please try again.";
         } else if (error.message.includes("already exists")) {
           errorMessage =
-            "This username is already registered. Try a different one.";
+            "This passkey is already registered. Try logging in instead.";
         }
       }
 
@@ -117,13 +83,12 @@ function LoginOverlay() {
 
   const handleLogin = async () => {
     try {
-      if (!loginUsername) {
-        setRegistrationError("Username is required");
-        return;
-      }
-      console.log("Logging in with username:", loginUsername);
       setRegistrationError(null);
-      await loginWithPasskey(loginUsername);
+      console.log("Signing in with passkey");
+
+      // Use a placeholder value - the real ID will be resolved during the passkey authentication
+      const tempId = `temp_${Date.now().toString(36)}`;
+      await loginWithPasskey(tempId);
     } catch (error) {
       console.error("Login failed:", error);
 
@@ -140,31 +105,13 @@ function LoginOverlay() {
         ) {
           errorMessage = "Login timed out or was cancelled. Please try again.";
         } else if (error.message.includes("not found")) {
-          errorMessage =
-            "No passkey found for this username. Please register first.";
+          errorMessage = "No passkey found. Please register first.";
         }
       }
 
       setRegistrationError(errorMessage);
     }
   };
-
-  // Show loading while checking passkeys
-  if (checkingPasskey) {
-    return (
-      <div className="fixed inset-0 bg-black z-[100] flex items-center justify-center">
-        <Card className="w-[380px]">
-          <CardHeader>
-            <CardTitle>Loading</CardTitle>
-            <CardDescription>Checking for existing passkeys...</CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <RefreshCcw className="h-8 w-8 animate-spin" />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 bg-black z-[100] flex items-center justify-center">
@@ -173,8 +120,8 @@ function LoginOverlay() {
           <CardTitle>Welcome to Smart Portfolio</CardTitle>
           <CardDescription>
             {hasAccount
-              ? "Sign in to access your portfolio"
-              : "Create an account to get started"}
+              ? "Sign in with your passkey to access your portfolio"
+              : "Create a passkey to get started"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -184,18 +131,6 @@ function LoginOverlay() {
 
           {hasAccount ? (
             <>
-              <div className="space-y-2">
-                <label htmlFor="login-username" className="text-sm font-medium">
-                  Username
-                </label>
-                <Input
-                  id="login-username"
-                  placeholder="Enter your username"
-                  value={loginUsername}
-                  onChange={(e) => setLoginUsername(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
               <Button
                 className="w-full"
                 size="lg"
@@ -214,31 +149,15 @@ function LoginOverlay() {
             </>
           ) : (
             <>
-              <div className="space-y-2">
-                <label
-                  htmlFor="register-username"
-                  className="text-sm font-medium"
-                >
-                  Choose a Username
-                </label>
-                <Input
-                  id="register-username"
-                  placeholder="Enter a username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">
-                  This will be your username for the app
-                </p>
-              </div>
               <Button
                 className="w-full"
                 size="lg"
                 onClick={handleRegister}
                 disabled={isLoading}
               >
-                {isLoading ? "Creating Account..." : "Create Account"}
+                {isLoading
+                  ? "Creating Account..."
+                  : "Create Account with Passkey"}
               </Button>
               <Button
                 className="w-full"

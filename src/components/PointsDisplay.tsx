@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount } from "@/contexts/AccountContext";
-import { db, getUserQuery } from "@/lib/db";
+import { db, getUserByAddressQuery } from "@/lib/db";
 import { Award } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -13,7 +13,7 @@ export default function PointsDisplay() {
 
   // Only run the query if we have an account address
   const { data, isLoading, error } = db.useQuery(
-    accountAddress ? getUserQuery(accountAddress) : null
+    accountAddress ? getUserByAddressQuery(accountAddress) : null
   );
 
   useEffect(() => {

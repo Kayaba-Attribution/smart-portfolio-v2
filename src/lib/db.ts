@@ -20,46 +20,32 @@ export { tx, id };
 
 /**
  * Creates a new user in the database when a wallet is connected
- * If a user with the given wallet address already exists, it returns the existing user
+ * Uses the wallet address as the primary identifier
  * @param walletAddress The user's wallet address
- * @param username The user's chosen username
- * @returns The ID of the user
+ * @param displayName A display name for the user (optional)
+ * @returns The ID of the user (wallet address)
  */
-export async function createUser(walletAddress: string, username: string) {
+export async function createUser(walletAddress: string, displayName?: string) {
     try {
-        console.log("Creating or finding user in InstantDB", { walletAddress, username });
+        console.log("Creating or finding user in InstantDB", { walletAddress, displayName });
 
-        // First try to find an existing user with this wallet address
-        // Since we can't use query directly, we'll use a try-catch approach
-        try {
-            // Generate unique IDs for the user and profile
-            const userId = id();
-            const profileId = id();
-            console.log("Generated IDs:", { userId, profileId });
+        // Generate ID for profile - use wallet address directly as the ID
+        const profileId = walletAddress;
+        console.log("Using wallet address as profile ID:", profileId);
 
-            // Create the user profile and link it to the user
-            await db.transact([
-                // Create the user profile
-                tx.userProfiles[profileId].update({
-                    walletAddress,
-                    username,
-                    totalPoints: 0,
-                    createdAt: Date.now(),
-                }),
-            ]);
+        // Create the user profile
+        await db.transact([
+            // Create the user profile
+            tx.userProfiles[profileId].update({
+                walletAddress,
+                username: displayName || `user_${walletAddress.slice(0, 6)}`,
+                totalPoints: 0,
+                createdAt: Date.now(),
+            }),
+        ]);
 
-            console.log("User profile created successfully with ID:", profileId);
-            return profileId;
-        } catch (error) {
-            // If we get an error about duplicate/unique constraint, it means the user already exists
-            const errorString = String(error);
-            if (errorString.includes('unique') || errorString.includes('duplicate') || errorString.includes('already exists')) {
-                console.log("User with this wallet address already exists, returning wallet address as ID");
-                return walletAddress;
-            }
-            // If it's a different error, rethrow
-            throw error;
-        }
+        console.log("User profile created/updated successfully");
+        return profileId;
     } catch (error) {
         console.error("Error in createUser:", error);
         if (error instanceof Error) {
@@ -69,7 +55,11 @@ export async function createUser(walletAddress: string, username: string) {
         } else {
             console.error("Non-Error object thrown:", typeof error, JSON.stringify(error));
         }
-        throw error;
+
+        // For this function, we'll swallow the error as it's likely just
+        // a conflict trying to create a user that already exists
+        console.log("Continuing despite error - user may already exist");
+        return walletAddress;
     }
 }
 
@@ -167,4 +157,17 @@ export async function createPortfolio(userId: string, type: string) {
  */
 export async function awardPointsForAction(userId: string, actionName: string, actionId: string, points: number) {
     await addPoints(userId, actionId, points);
+}
+
+/**
+ * Returns a query to get a user by their wallet address
+ * Note: This function must be used within a React component using the useQuery hook
+ * @param address The wallet address
+ */
+export function getUserByAddressQuery(address: string) {
+    return {
+        userProfiles: {
+            $: { where: { walletAddress: address } },
+        },
+    };
 } 

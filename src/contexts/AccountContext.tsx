@@ -1,14 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useEffect,
-  useCallback,
-} from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 import type {
   KernelAccountClient,
   KernelSmartAccountImplementation,
@@ -49,31 +42,31 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     useState<KernelSmartAccountImplementation | null>(null);
   const [client, setClient] = useState<KernelAccountClient | null>(null);
   const [accountAddress, setAccountAddress] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [isSendingUserOp, setIsSendingUserOp] = useState(false);
   const [userOpStatus, setUserOpStatus] = useState("");
   const [userOpHash, setUserOpHash] = useState<string | null>(null);
 
-  // Define login handler - simplified and more direct
-  const handlePasskeyLogin = useCallback(async (username: string) => {
+  // Define login handler - simplified
+  const handlePasskeyLogin = async (tempUsername: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log("Starting login with username:", username);
+      console.log("Starting login with passkey");
 
       // Get account and client
       const { account: newAccount, client: newClient } = await passkeyLogin(
-        username
+        tempUsername
       );
 
       if (!newAccount || !newClient) {
         throw new Error("Failed to get account or client during login");
       }
 
-      // Get address
+      // Get address - this is our real identifier
       const address = await newAccount.getAddress();
       console.log("Login successful! Account address:", address);
 
@@ -81,59 +74,50 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setAccount(newAccount);
       setClient(newClient);
       setAccountAddress(address);
-      setUsername(username);
 
-      // Store in localStorage for persistence
-      localStorage.setItem("username", username);
+      // Use address as username for now - we could load a friendly name from DB later
+      const displayName = `user_${address.slice(0, 6)}`;
+      setUsername(displayName);
+
+      // Store in localStorage for UI state persistence
       localStorage.setItem("accountAddress", address);
 
-      // Create user record in InstantDB if needed
-      try {
-        await createUser(address, username);
-      } catch (dbError) {
-        console.error("DB error during login (non-fatal):", dbError);
-      }
+      // We don't store displayName/username in localStorage since it's just UI sugar
     } catch (err) {
       console.error("Login failed:", err);
       setError(err instanceof Error ? err : new Error("Login failed"));
 
-      // Clear state and storage on failure
+      // Clear state on failure
       setAccount(null);
       setClient(null);
       setAccountAddress(null);
       setUsername(null);
-      localStorage.removeItem("username");
       localStorage.removeItem("accountAddress");
 
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
-  // Registration handler - simplified and more direct
-  const handlePasskeyRegistration = async (username: string) => {
-    if (!username?.trim()) {
-      setError(new Error("Username is required"));
-      return;
-    }
-
+  // Registration handler - simplified
+  const handlePasskeyRegistration = async (tempUsername: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log("Starting registration with username:", username);
+      console.log("Starting registration with passkey");
 
       // Create account and client
       const { account: newAccount, client: newClient } = await handleRegister(
-        username
+        tempUsername
       );
 
       if (!newAccount || !newClient) {
         throw new Error("Failed to get account or client during registration");
       }
 
-      // Get address
+      // Get address - this is our real identifier
       const address = await newAccount.getAddress();
       console.log("Registration successful! Account address:", address);
 
@@ -141,15 +125,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setAccount(newAccount);
       setClient(newClient);
       setAccountAddress(address);
-      setUsername(username);
 
-      // Store in localStorage for persistence
-      localStorage.setItem("username", username);
+      // Use address as username for now - we could load a friendly name from DB later
+      const displayName = `user_${address.slice(0, 6)}`;
+      setUsername(displayName);
+
+      // Store in localStorage for UI state persistence
       localStorage.setItem("accountAddress", address);
 
-      // Create user record in InstantDB
+      // Create user record in InstantDB - use address as primary key
       try {
-        await createUser(address, username);
+        await createUser(address, displayName);
       } catch (dbError) {
         console.error("DB error during registration (non-fatal):", dbError);
       }
@@ -157,12 +143,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       console.error("Registration failed:", err);
       setError(err instanceof Error ? err : new Error("Registration failed"));
 
-      // Clear state and storage on failure
+      // Clear state on failure
       setAccount(null);
       setClient(null);
       setAccountAddress(null);
       setUsername(null);
-      localStorage.removeItem("username");
       localStorage.removeItem("accountAddress");
 
       throw err;
@@ -177,52 +162,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setClient(null);
     setAccountAddress(null);
     setUsername(null);
-    localStorage.removeItem("username");
     localStorage.removeItem("accountAddress");
     setError(null);
     console.log("Logged out successfully");
   };
-
-  // Auto-login from localStorage on mount
-  useEffect(() => {
-    const autoLogin = async () => {
-      try {
-        const storedUsername = localStorage.getItem("username");
-
-        if (!storedUsername) {
-          console.log("No stored username found");
-          setIsLoading(false);
-          return;
-        }
-
-        console.log("Found stored username, attempting auto-login");
-
-        try {
-          // Try to log in with the stored username
-          await handlePasskeyLogin(storedUsername);
-          console.log("Auto-login successful");
-        } catch (loginError) {
-          console.error("Auto-login failed:", loginError);
-
-          // Clear all state and localStorage on login failure
-          setAccount(null);
-          setClient(null);
-          setAccountAddress(null);
-          setUsername(null);
-          localStorage.removeItem("username");
-          localStorage.removeItem("accountAddress");
-        }
-      } catch (err) {
-        console.error("Error during auto-login process:", err);
-      } finally {
-        // Always ensure loading is set to false
-        setIsLoading(false);
-      }
-    };
-
-    // Run auto-login
-    autoLogin();
-  }, [handlePasskeyLogin]);
 
   // Transaction handling function
   const handleSendUserOp = async ({
