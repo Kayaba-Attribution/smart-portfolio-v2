@@ -42,6 +42,37 @@ function serializeSubscription(subscription: PushSubscription) {
   };
 }
 
+// Helper to manage notified transactions
+const NOTIFICATION_STORAGE_KEY = "notified_transactions";
+const MAX_TRACKED_TRANSACTIONS = 50;
+
+function getNotifiedTransactions(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = localStorage.getItem(NOTIFICATION_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (error) {
+    console.error("Error getting notified transactions:", error);
+    return [];
+  }
+}
+
+function saveNotifiedTransaction(txHash: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const current = getNotifiedTransactions();
+    // Add new hash and keep only the most recent MAX_TRACKED_TRANSACTIONS
+    const updated = [...current, txHash].slice(-MAX_TRACKED_TRANSACTIONS);
+    localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(updated));
+  } catch (error) {
+    console.error("Error saving notified transaction:", error);
+  }
+}
+
+function hasBeenNotified(txHash: string): boolean {
+  return getNotifiedTransactions().includes(txHash);
+}
+
 export function PushNotificationManager() {
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(
@@ -51,8 +82,10 @@ export function PushNotificationManager() {
   const [autoNotify, setAutoNotify] = useState(true);
   const { userOpStatus, userOpHash } = useAccount();
 
-  // Track which transactions we've already notified about
-  const notifiedTransactions = useRef<Set<string>>(new Set());
+  // Get notification state from localStorage
+  const notifiedTransactions = useRef<Set<string>>(
+    new Set(getNotifiedTransactions())
+  );
 
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
@@ -61,37 +94,42 @@ export function PushNotificationManager() {
     }
   }, []);
 
-  // Listen for user op status changes with improved notification logic
+  // Improved transaction notification handler with localStorage persistence
   useEffect(() => {
-    // Skip if no subscription, auto-notify is off, or no status
+    // Skip processing if any required condition is not met
     if (!subscription || !autoNotify || !userOpStatus || !userOpHash) return;
 
     // Skip if we've already notified about this transaction
-    if (notifiedTransactions.current.has(userOpHash)) return;
+    if (
+      notifiedTransactions.current.has(userOpHash) ||
+      hasBeenNotified(userOpHash)
+    ) {
+      return;
+    }
 
-    // Handle successful transaction
+    // Process completed transactions
     if (userOpStatus.includes("completed")) {
+      console.log("Sending success notification for:", userOpHash);
       sendNotification(
         serializeSubscription(subscription),
         `Transaction completed! Hash: ${userOpHash.slice(0, 10)}...`
       );
-      // Mark this transaction as notified
+
+      // Save notification state both in memory and localStorage
       notifiedTransactions.current.add(userOpHash);
+      saveNotifiedTransaction(userOpHash);
     }
-    // Handle failed transaction
+    // Process failed transactions
     else if (userOpStatus.includes("Error")) {
+      console.log("Sending error notification for:", userOpHash);
       sendNotification(
         serializeSubscription(subscription),
         `Transaction failed: ${userOpStatus}`
       );
-      // Mark this transaction as notified
-      notifiedTransactions.current.add(userOpHash);
-    }
 
-    // Keep the set from growing too large by limiting it to the most recent 50 transactions
-    if (notifiedTransactions.current.size > 50) {
-      const values = Array.from(notifiedTransactions.current);
-      notifiedTransactions.current = new Set(values.slice(values.length - 50));
+      // Save notification state both in memory and localStorage
+      notifiedTransactions.current.add(userOpHash);
+      saveNotifiedTransaction(userOpHash);
     }
   }, [userOpStatus, userOpHash, subscription, autoNotify]);
 

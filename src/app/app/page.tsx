@@ -23,7 +23,6 @@ import { useTokenBalances } from "@/contexts/TokenBalanceContext";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { useAccount } from "@/contexts/AccountContext";
-import { PushNotificationManager } from "@/components/PushNotificationManager";
 import { useUI } from "@/contexts/UIContext";
 import PointsDisplay from "@/components/PointsDisplay";
 import { AccountDebug } from "@/components/AccountDebug";
@@ -304,7 +303,6 @@ function PortfolioOverview() {
         </CardContent>
       </Card>
 
-      <PushNotificationManager />
       <Faucet />
     </div>
   );

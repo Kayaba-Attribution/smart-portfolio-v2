@@ -27,11 +27,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     >
       <Header />
       <main className="h-[100dvh] pt-16 pb-20 overflow-y-auto">
+        <PushNotificationManager />
         <AnimatePresence mode="wait">{children}</AnimatePresence>
       </main>
       <BottomNav />
       <DebugInfo />
-      <PushNotificationManager />
     </div>
   );
 }
