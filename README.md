@@ -57,10 +57,12 @@ npm run seed
 ## Authentication Flow
 
 1. New users can create an account by choosing a username and registering with a passkey
-2. Returning users sign in with their username and previously registered passkey
-3. No automatic login - users must explicitly sign in each time they visit the app
-4. The app validates the existence of passkeys during initialization to properly display login/register screens
-5. If passkeys are deleted from the device, the app will automatically detect this and show the registration screen
+2. The passkey is created with a friendly name that combines the username and app name (e.g., "username - SmartPortfolio")
+3. Returning users sign in with their username and previously registered passkey
+4. The wallet address serves as the unique identifier in the database, while the username is used for display purposes
+5. No automatic login - users must explicitly sign in each time they visit the app
+6. The app validates the existence of passkeys during initialization to properly display login/register screens
+7. If passkeys are deleted from the device, the app will automatically detect this and show the registration screen
 
 ## Passkey Validation
 
@@ -69,7 +71,8 @@ The app uses a robust passkey validation system:
 1. When the app loads, it checks if stored usernames have valid passkeys on the device
 2. If passkeys are missing, it automatically cleans up localStorage to prevent authentication issues
 3. The login screen allows switching between registration and login modes
-4. The app properly handles cases where passkeys might be deleted from the device
+4. The username is displayed in the header, fetched from the database using the wallet address
+5. The app properly handles cases where passkeys might be deleted from the device
 
 ## Points System
 
@@ -95,7 +98,8 @@ The application uses a context-based approach for managing user accounts:
   - Creates InstantDB user records when new wallets are registered
   - Provides authentication state throughout the application
   - Allows users to choose custom usernames during registration
-  - Validates passkey existence to prevent authentication issues
+  - Passkeys are created with a combined name format: "username - SmartPortfolio"
+  - The Header component queries the database to display the username using the wallet address
 
 ### Database Structure
 

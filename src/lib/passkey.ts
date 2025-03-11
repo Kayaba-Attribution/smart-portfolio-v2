@@ -50,15 +50,18 @@ export async function checkPasskeyExists(): Promise<boolean> {
 }
 
 // Function to be called when "Register" is clicked
-export async function handleRegister(tempId?: string) {
-    console.log("Registering passkey...", tempId);
+export async function handleRegister(tempId?: string, displayUsername?: string) {
+    console.log("Registering passkey...", { tempId, displayUsername });
 
     try {
+        // Combine username with APP_PASSKEY_NAME for the passkey name
+        const passkeyName = displayUsername ? `${displayUsername} - ${APP_PASSKEY_NAME}` : APP_PASSKEY_NAME;
+        console.log("Using passkey name:", passkeyName);
         console.log("Using passkey server URL:", ZERODEV_CONFIG.passkeyServerUrl);
 
         console.log("Creating WebAuthn key...");
         const webAuthnKey = await toWebAuthnKey({
-            passkeyName: APP_PASSKEY_NAME,
+            passkeyName,
             passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
             mode: WebAuthnMode.Register,
             passkeyServerHeaders: {},

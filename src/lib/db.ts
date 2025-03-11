@@ -29,14 +29,12 @@ export async function createUser(walletAddress: string, displayName?: string) {
     try {
         console.log("Creating or finding user in InstantDB", { walletAddress, displayName });
 
-        // Generate ID for profile - use wallet address directly as the ID
-        const profileId = walletAddress;
-        console.log("Using wallet address as profile ID:", profileId);
+        // Use InstantDB ID
 
         // Create the user profile
         await db.transact([
             // Create the user profile
-            tx.userProfiles[profileId].update({
+            tx.userProfiles[id()].update({
                 walletAddress,
                 username: displayName || `user_${walletAddress.slice(0, 6)}`,
                 totalPoints: 0,
@@ -45,7 +43,7 @@ export async function createUser(walletAddress: string, displayName?: string) {
         ]);
 
         console.log("User profile created/updated successfully");
-        return profileId;
+
     } catch (error) {
         console.error("Error in createUser:", error);
         if (error instanceof Error) {
@@ -59,7 +57,6 @@ export async function createUser(walletAddress: string, displayName?: string) {
         // For this function, we'll swallow the error as it's likely just
         // a conflict trying to create a user that already exists
         console.log("Continuing despite error - user may already exist");
-        return walletAddress;
     }
 }
 

@@ -19,7 +19,7 @@ interface AccountContextType {
   accountAddress: string | null;
   isLoading: boolean;
   error: Error | null;
-  registerPasskey: (username: string) => Promise<void>;
+  registerPasskey: (tempId: string, displayUsername?: string) => Promise<void>;
   loginWithPasskey: (username: string) => Promise<void>;
   logout: () => void;
   username: string | null;
@@ -75,12 +75,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setClient(newClient);
       setAccountAddress(address);
 
-      // Use address as username for now - we could load a friendly name from DB later
-      const displayName = `user_${address.slice(0, 6)}`;
+      // Try to get stored display username or generate one from address
+      const storedDisplayName = localStorage.getItem("displayUsername");
+      const displayName = storedDisplayName || `user_${address.slice(0, 6)}`;
       setUsername(displayName);
 
       // Store in localStorage for UI state persistence
       localStorage.setItem("accountAddress", address);
+      if (!storedDisplayName) {
+        localStorage.setItem("displayUsername", displayName);
+      }
 
       // We don't store displayName/username in localStorage since it's just UI sugar
     } catch (err) {
@@ -93,6 +97,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setAccountAddress(null);
       setUsername(null);
       localStorage.removeItem("accountAddress");
+      localStorage.removeItem("displayUsername");
 
       throw err;
     } finally {
@@ -101,16 +106,20 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   };
 
   // Registration handler - simplified
-  const handlePasskeyRegistration = async (tempUsername: string) => {
+  const handlePasskeyRegistration = async (
+    tempId: string,
+    displayUsername?: string
+  ) => {
     setIsLoading(true);
     setError(null);
 
     try {
       console.log("Starting registration with passkey");
 
-      // Create account and client
+      // Create account and client, passing the displayUsername to handleRegister
       const { account: newAccount, client: newClient } = await handleRegister(
-        tempUsername
+        tempId,
+        displayUsername
       );
 
       if (!newAccount || !newClient) {
@@ -126,16 +135,18 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setClient(newClient);
       setAccountAddress(address);
 
-      // Use address as username for now - we could load a friendly name from DB later
-      const displayName = `user_${address.slice(0, 6)}`;
-      setUsername(displayName);
+      // Use provided display username or generate one from address
+      const userDisplayName =
+        displayUsername?.trim() || `user_${address.slice(0, 6)}`;
+      setUsername(userDisplayName);
 
       // Store in localStorage for UI state persistence
       localStorage.setItem("accountAddress", address);
+      localStorage.setItem("displayUsername", userDisplayName);
 
       // Create user record in InstantDB - use address as primary key
       try {
-        await createUser(address, displayName);
+        await createUser(address, userDisplayName);
       } catch (dbError) {
         console.error("DB error during registration (non-fatal):", dbError);
       }
@@ -149,6 +160,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setAccountAddress(null);
       setUsername(null);
       localStorage.removeItem("accountAddress");
+      localStorage.removeItem("displayUsername");
 
       throw err;
     } finally {
@@ -163,6 +175,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setAccountAddress(null);
     setUsername(null);
     localStorage.removeItem("accountAddress");
+    localStorage.removeItem("displayUsername");
     setError(null);
     console.log("Logged out successfully");
   };

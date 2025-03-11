@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardHeader,
@@ -40,6 +41,7 @@ function LoginOverlay() {
   const [registrationError, setRegistrationError] = useState<string | null>(
     null
   );
+  const [username, setUsername] = useState("");
 
   // Check for existing account on client-side only
   useEffect(() => {
@@ -50,11 +52,18 @@ function LoginOverlay() {
   const handleRegister = async () => {
     try {
       setRegistrationError(null);
-      console.log("Creating new passkey");
+
+      // Validate username
+      if (!username.trim()) {
+        setRegistrationError("Please enter a username");
+        return;
+      }
+
+      console.log("Creating new passkey with username:", username);
 
       // Generate a temp ID as placeholder - will be replaced by wallet address
       const tempId = `temp_${Date.now().toString(36)}`;
-      await registerPasskey(tempId);
+      await registerPasskey(tempId, username);
     } catch (error) {
       console.error("Registration failed:", error);
 
@@ -149,6 +158,19 @@ function LoginOverlay() {
             </>
           ) : (
             <>
+              <div className="space-y-2">
+                <label htmlFor="username" className="text-sm font-medium">
+                  Choose a Username
+                </label>
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter a username"
+                  disabled={isLoading}
+                />
+              </div>
               <Button
                 className="w-full"
                 size="lg"

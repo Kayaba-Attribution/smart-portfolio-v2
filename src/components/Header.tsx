@@ -5,11 +5,25 @@ import { Button } from "./ui/button";
 import Image from "next/image";
 import { useUI } from "@/contexts/UIContext";
 import { Loader2 } from "lucide-react";
+import { getUserByAddressQuery, db } from "@/lib/db";
+import { useEffect, useState } from "react";
 
 export function Header() {
-  const { account, accountAddress, isLoading, error, username, logout } =
-    useAccount();
+  const { account, accountAddress, isLoading, error, logout } = useAccount();
   const { isLoginOverlayVisible } = useUI();
+  const [dbUsername, setDbUsername] = useState<string | null>(null);
+
+  // Query the database for the user profile when accountAddress changes
+  const { data } = db.useQuery(
+    accountAddress ? getUserByAddressQuery(accountAddress) : null
+  );
+
+  // Update the username when data changes
+  useEffect(() => {
+    if (data && data.userProfiles && data.userProfiles.length > 0) {
+      setDbUsername(data.userProfiles[0].username || null);
+    }
+  }, [data]);
 
   // Don't render if login overlay is visible
   if (isLoginOverlayVisible) return null;
@@ -44,12 +58,16 @@ export function Header() {
 
             {account && accountAddress ? (
               <div className="flex items-center gap-4">
-                <div className="text-sm">
-                  {username && <span className="mr-2">{username}</span>}
-                  {accountAddress &&
-                    `${accountAddress.slice(0, 6)}...${accountAddress.slice(
-                      -4
-                    )}`}
+                <div className="text-sm flex flex-col items-end">
+                  {dbUsername && (
+                    <span className="font-medium">{dbUsername}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {accountAddress &&
+                      `${accountAddress.slice(0, 6)}...${accountAddress.slice(
+                        -4
+                      )}`}
+                  </span>
                 </div>
                 <Button variant="outline" size="sm" onClick={logout}>
                   Logout
