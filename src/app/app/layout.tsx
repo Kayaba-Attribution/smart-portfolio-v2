@@ -6,6 +6,7 @@ import { DebugInfo } from "@/components/DebugInfo";
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { PushNotificationService } from "@/components/PushNotificationService";
+import { PointsInitializer } from "@/components/PointsInitializer";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Add data attribute to html element for app routes
@@ -32,8 +33,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <BottomNav />
       <DebugInfo />
 
-      {/* Background service for push notifications - no UI */}
+      {/* Background services - no UI */}
       <PushNotificationService />
+      <PointsInitializer />
     </div>
   );
 }

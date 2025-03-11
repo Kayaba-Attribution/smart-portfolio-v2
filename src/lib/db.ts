@@ -20,10 +20,8 @@ export { tx, id };
 
 /**
  * Creates a new user in the database when a wallet is connected
- * Uses the wallet address as the primary identifier
  * @param walletAddress The user's wallet address
  * @param displayName A display name for the user (optional)
- * @returns The ID of the user (wallet address)
  */
 export async function createUser(walletAddress: string, displayName?: string) {
     try {
@@ -76,34 +74,47 @@ export function getUserQuery(walletAddress: string) {
 
 /**
  * Adds points to a user for a specific action
- * @param userId The user's ID
+ * @param userId The user's wallet address
  * @param actionId The action ID
  * @param points The number of points to award
+ * @param userProfileId The ID of the user profile (optional - if not provided, assumes userId is the profile ID)
  */
-export async function addPoints(userId: string, actionId: string, points: number) {
+export async function addPoints(
+    userId: string,
+    actionId: string,
+    points: number,
+    userProfileId?: string
+) {
     // Generate a unique ID for the transaction
     const transactionId = id();
 
-    // Create a points transaction and update the user's total points
-    await db.transact([
-        // Create the points transaction
-        tx.pointsTransactions[transactionId].update({
-            userId,
-            actionId,
-            points,
-            timestamp: Date.now(),
-        }),
+    try {
+        // ID to update - either the provided profile ID or assume userId is the ID
+        const profileIdToUpdate = userProfileId || userId;
 
-        // Update the user's total points
-        tx.$users[userId].update({
-            // Use a lambda to increment the current value
-            totalPoints: (current: number | undefined) => (current || 0) + points,
-        }),
+        // Create a points transaction and update the user's total points
+        await db.transact([
+            // Create the points transaction
+            tx.pointsTransactions[transactionId].update({
+                userId,
+                actionId,
+                points,
+                timestamp: Date.now(),
+            }),
 
-        // Link the transaction to the user and action
-        tx.pointsTransactions[transactionId].link({ user: userId }),
-        tx.pointsTransactions[transactionId].link({ action: actionId }),
-    ]);
+            // Update the user's total points
+            tx.userProfiles[profileIdToUpdate].update({
+                // Use a lambda to increment the current value
+                totalPoints: (current: number | undefined) => (current || 0) + points,
+            }),
+        ]);
+
+        console.log(`Added ${points} points to user ${userId} for action ${actionId}`);
+        return transactionId;
+    } catch (error) {
+        console.error("Error adding points:", error);
+        throw error;
+    }
 }
 
 /**
