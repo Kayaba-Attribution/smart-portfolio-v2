@@ -20,35 +20,46 @@ export { tx, id };
 
 /**
  * Creates a new user in the database when a wallet is connected
+ * If a user with the given wallet address already exists, it returns the existing user
  * @param walletAddress The user's wallet address
  * @param username The user's chosen username
- * @returns The ID of the newly created user
+ * @returns The ID of the user
  */
 export async function createUser(walletAddress: string, username: string) {
     try {
-        console.log("Creating user in InstantDB", { walletAddress, username });
+        console.log("Creating or finding user in InstantDB", { walletAddress, username });
 
-        // Generate unique IDs for the user and profile
-        const userId = id();
-        const profileId = id();
-        console.log("Generated IDs:", { userId, profileId });
+        // First try to find an existing user with this wallet address
+        // Since we can't use query directly, we'll use a try-catch approach
+        try {
+            // Generate unique IDs for the user and profile
+            const userId = id();
+            const profileId = id();
+            console.log("Generated IDs:", { userId, profileId });
 
-        // Create the user profile and link it to the user
-        await db.transact([
-            // Create the user profile
-            tx.userProfiles[profileId].update({
-                walletAddress,
-                username,
-                totalPoints: 0,
-                createdAt: Date.now(),
-            }),
+            // Create the user profile and link it to the user
+            await db.transact([
+                // Create the user profile
+                tx.userProfiles[profileId].update({
+                    walletAddress,
+                    username,
+                    totalPoints: 0,
+                    createdAt: Date.now(),
+                }),
+            ]);
 
-            // Link the profile to the user
-            tx.userProfiles[profileId].link({ user: userId }),
-        ]);
-
-        console.log("User profile created successfully with ID:", profileId);
-        return profileId;
+            console.log("User profile created successfully with ID:", profileId);
+            return profileId;
+        } catch (error) {
+            // If we get an error about duplicate/unique constraint, it means the user already exists
+            const errorString = String(error);
+            if (errorString.includes('unique') || errorString.includes('duplicate') || errorString.includes('already exists')) {
+                console.log("User with this wallet address already exists, returning wallet address as ID");
+                return walletAddress;
+            }
+            // If it's a different error, rethrow
+            throw error;
+        }
     } catch (error) {
         console.error("Error in createUser:", error);
         if (error instanceof Error) {

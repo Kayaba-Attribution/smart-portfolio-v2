@@ -16,7 +16,6 @@ import type {
 import {
   handleRegister,
   loginWithPasskey as passkeyLogin,
-  checkPasskeyExists,
 } from "@/lib/passkey";
 import { encodeFunctionData } from "viem";
 import { createUser } from "@/lib/db";
@@ -57,193 +56,122 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [userOpStatus, setUserOpStatus] = useState("");
   const [userOpHash, setUserOpHash] = useState<string | null>(null);
 
+  // Define login handler - simplified and more direct
   const handlePasskeyLogin = useCallback(async (username: string) => {
     setIsLoading(true);
-    console.log("Starting passkey login for username:", username);
-
-    // Track completion steps separately
-    let passkeyLoginSuccessful = false;
-    let walletAddressObtained = false;
+    setError(null);
 
     try {
-      console.log("Calling passkeyLogin with username:", username);
+      console.log("Starting login with username:", username);
+
+      // Get account and client
       const { account: newAccount, client: newClient } = await passkeyLogin(
         username
       );
-      console.log("Successfully authenticated with passkey");
-      passkeyLoginSuccessful = true;
 
+      if (!newAccount || !newClient) {
+        throw new Error("Failed to get account or client during login");
+      }
+
+      // Get address
+      const address = await newAccount.getAddress();
+      console.log("Login successful! Account address:", address);
+
+      // Update state
       setAccount(newAccount);
       setClient(newClient);
-
-      console.log("Getting wallet address after login");
-      const address = await newAccount.getAddress();
-      console.log("Got wallet address after login:", address);
-      walletAddressObtained = true;
-
       setAccountAddress(address);
-      localStorage.setItem("accountAddress", address);
       setUsername(username);
+
+      // Store in localStorage for persistence
       localStorage.setItem("username", username);
+      localStorage.setItem("accountAddress", address);
 
-      // Check if user exists in InstantDB, if not, create the user
+      // Create user record in InstantDB if needed
       try {
-        // Import the createUser function to avoid circular dependencies
-        const { createUser } = await import("@/lib/db");
-        console.log("Checking/creating user in InstantDB after login");
         await createUser(address, username);
-        console.log("User record confirmed in InstantDB");
       } catch (dbError) {
-        console.error(
-          "Error checking/creating user in InstantDB after login:",
-          dbError
-        );
-        // Non-fatal error - user can still proceed with limited functionality
-        console.log("Login will continue despite DB error");
+        console.error("DB error during login (non-fatal):", dbError);
       }
-
-      console.log("Login process completed successfully");
     } catch (err) {
-      console.error("Error logging in:", err);
+      console.error("Login failed:", err);
+      setError(err instanceof Error ? err : new Error("Login failed"));
 
-      // Handle empty error object
-      if (err && Object.keys(err).length === 0) {
-        console.error("Empty error object received during login");
-      }
-
-      // Log detailed error information
-      if (err instanceof Error) {
-        console.error("Login error name:", err.name);
-        console.error("Login error message:", err.message);
-        console.error("Login error stack:", err.stack);
-      } else {
-        console.error(
-          "Non-Error object thrown during login:",
-          typeof err,
-          JSON.stringify(err)
-        );
-      }
-
-      // Set appropriate error message based on which step failed
-      if (!passkeyLoginSuccessful) {
-        setError(
-          new Error("Failed to authenticate with passkey. Please try again.")
-        );
-      } else if (!walletAddressObtained) {
-        setError(
-          new Error(
-            "Authenticated with passkey, but failed to get wallet address. Please try again."
-          )
-        );
-      } else {
-        setError(err instanceof Error ? err : new Error("Failed to login"));
-      }
-
+      // Clear state and storage on failure
+      setAccount(null);
+      setClient(null);
+      setAccountAddress(null);
+      setUsername(null);
       localStorage.removeItem("username");
       localStorage.removeItem("accountAddress");
+
+      throw err;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // Registration handler - simplified and more direct
   const handlePasskeyRegistration = async (username: string) => {
-    if (!username || username.trim() === "") {
+    if (!username?.trim()) {
       setError(new Error("Username is required"));
       return;
     }
 
     setIsLoading(true);
-    console.log("Starting passkey registration for username:", username);
-
-    // Track completion steps separately
-    let passkeyCreated = false;
-    let walletAddressObtained = false;
+    setError(null);
 
     try {
-      // Step 1: Create passkey
-      console.log("Calling handleRegister with username:", username);
+      console.log("Starting registration with username:", username);
+
+      // Create account and client
       const { account: newAccount, client: newClient } = await handleRegister(
         username
       );
-      console.log("Successfully created passkey and account");
-      passkeyCreated = true;
 
-      // Set account state even if later steps fail
+      if (!newAccount || !newClient) {
+        throw new Error("Failed to get account or client during registration");
+      }
+
+      // Get address
+      const address = await newAccount.getAddress();
+      console.log("Registration successful! Account address:", address);
+
+      // Update state
       setAccount(newAccount);
       setClient(newClient);
-
-      // Step 2: Get wallet address
-      console.log("Getting wallet address");
-      const address = await newAccount.getAddress();
-      console.log("Got wallet address:", address);
-      walletAddressObtained = true;
-
-      // Set address state even if later steps fail
       setAccountAddress(address);
-      localStorage.setItem("accountAddress", address);
       setUsername(username);
+
+      // Store in localStorage for persistence
       localStorage.setItem("username", username);
+      localStorage.setItem("accountAddress", address);
 
-      // Step 3: Create user in InstantDB (this might be failing)
+      // Create user record in InstantDB
       try {
-        console.log("Creating user in InstantDB");
         await createUser(address, username);
-        console.log("Successfully created user in InstantDB");
       } catch (dbError) {
-        console.error("Error creating user in InstantDB:", dbError);
-        // Log more details about the error
-        console.log("DB Error type:", typeof dbError);
-        console.log("DB Error serialized:", JSON.stringify(dbError));
-
-        // Don't throw here - we can still proceed with the passkey and wallet
-        // but should notify the user
-        setError(
-          new Error(
-            "Your passkey was created, but there was an issue storing your user data. Some features may be limited."
-          )
-        );
+        console.error("DB error during registration (non-fatal):", dbError);
       }
     } catch (err) {
-      console.error("Error creating account:", err);
-      // Handle empty error object
-      if (err && Object.keys(err).length === 0) {
-        console.error("Empty error object received");
-      }
+      console.error("Registration failed:", err);
+      setError(err instanceof Error ? err : new Error("Registration failed"));
 
-      // Log detailed error information
-      if (err instanceof Error) {
-        console.error("Error name:", err.name);
-        console.error("Error message:", err.message);
-        console.error("Error stack:", err.stack);
-      } else {
-        console.error(
-          "Non-Error object thrown:",
-          typeof err,
-          JSON.stringify(err)
-        );
-      }
+      // Clear state and storage on failure
+      setAccount(null);
+      setClient(null);
+      setAccountAddress(null);
+      setUsername(null);
+      localStorage.removeItem("username");
+      localStorage.removeItem("accountAddress");
 
-      // Set appropriate error message based on which step failed
-      if (!passkeyCreated) {
-        setError(new Error("Failed to create passkey. Please try again."));
-      } else if (!walletAddressObtained) {
-        setError(
-          new Error(
-            "Passkey created, but failed to get wallet address. Please try again."
-          )
-        );
-      } else {
-        setError(
-          err instanceof Error
-            ? err
-            : new Error("Failed during account creation")
-        );
-      }
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Simple logout function
   const handleLogout = () => {
     setAccount(null);
     setClient(null);
@@ -251,44 +179,52 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setUsername(null);
     localStorage.removeItem("username");
     localStorage.removeItem("accountAddress");
+    setError(null);
+    console.log("Logged out successfully");
   };
 
+  // Auto-login from localStorage on mount
   useEffect(() => {
-    const checkAndCleanup = async () => {
+    const autoLogin = async () => {
       try {
         const storedUsername = localStorage.getItem("username");
 
-        if (storedUsername) {
-          const passKeyExists = await checkPasskeyExists(storedUsername);
-
-          if (!passKeyExists) {
-            console.log("No valid passkey found, clearing session data");
-            localStorage.removeItem("username");
-            localStorage.removeItem("accountAddress");
-            setAccountAddress(null);
-            setUsername(null);
-          } else {
-            const storedAddress = localStorage.getItem("accountAddress");
-            if (storedAddress) {
-              setAccountAddress(storedAddress);
-              setUsername(storedUsername);
-            }
-          }
+        if (!storedUsername) {
+          console.log("No stored username found");
+          setIsLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error("Error checking passkeys:", error);
-        localStorage.removeItem("username");
-        localStorage.removeItem("accountAddress");
-        setAccountAddress(null);
-        setUsername(null);
+
+        console.log("Found stored username, attempting auto-login");
+
+        try {
+          // Try to log in with the stored username
+          await handlePasskeyLogin(storedUsername);
+          console.log("Auto-login successful");
+        } catch (loginError) {
+          console.error("Auto-login failed:", loginError);
+
+          // Clear all state and localStorage on login failure
+          setAccount(null);
+          setClient(null);
+          setAccountAddress(null);
+          setUsername(null);
+          localStorage.removeItem("username");
+          localStorage.removeItem("accountAddress");
+        }
+      } catch (err) {
+        console.error("Error during auto-login process:", err);
       } finally {
+        // Always ensure loading is set to false
         setIsLoading(false);
       }
     };
 
-    checkAndCleanup();
-  }, []);
+    // Run auto-login
+    autoLogin();
+  }, [handlePasskeyLogin]);
 
+  // Transaction handling function
   const handleSendUserOp = async ({
     contractAddress,
     contractABI,
@@ -302,36 +238,41 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     args: any[];
     onSuccess?: () => void;
   }) => {
-    if (!client || !account || !account.encodeCalls) {
-      throw new Error("Account or client not initialized");
+    if (!account || !client) {
+      const msg = "Cannot send transaction: No account or client";
+      console.error(msg);
+      throw new Error(msg);
     }
 
-    try {
-      setIsSendingUserOp(true);
-      setUserOpStatus("Preparing transaction...");
+    setIsSendingUserOp(true);
+    setUserOpStatus("Preparing transaction...");
 
+    try {
+      console.log("Sending transaction:", {
+        contract: contractAddress,
+        function: functionName,
+        args,
+      });
+
+      const callData = encodeFunctionData({
+        abi: contractABI,
+        functionName,
+        args,
+      });
+
+      // Use the correct method from the account instance
       const userOpHash = await client.sendUserOperation({
         callData: await account.encodeCalls([
           {
             to: contractAddress as `0x${string}`,
             value: BigInt(0),
-            data: encodeFunctionData({
-              abi: contractABI,
-              functionName,
-              args,
-            }),
+            data: callData,
           },
         ]),
       });
 
       setUserOpHash(userOpHash);
-      setUserOpStatus("Transaction sent, waiting for confirmation...");
-
-      await client.waitForUserOperationReceipt({
-        hash: userOpHash,
-      });
-
-      setUserOpStatus(`Transaction completed. ${userOpHash}`);
+      setUserOpStatus(`Transaction sent! Hash: ${userOpHash}`);
 
       if (onSuccess) {
         onSuccess();
@@ -339,8 +280,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
       return userOpHash;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      setUserOpStatus(`Error: ${errorMessage}`);
+      console.error("Error sending transaction:", err);
+      setUserOpStatus(
+        `Transaction failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
       throw err;
     } finally {
       setIsSendingUserOp(false);

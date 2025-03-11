@@ -26,6 +26,7 @@ import { PushNotificationManager } from "@/components/PushNotificationManager";
 import { useUI } from "@/contexts/UIContext";
 import PointsDisplay from "@/components/PointsDisplay";
 import { Input } from "@/components/ui/input";
+import { AccountDebug } from "@/components/AccountDebug";
 
 // Dummy data for portfolio stats
 const PORTFOLIO_STATS = {
@@ -372,7 +373,7 @@ export default function AppPage() {
   const { accountAddress, isLoading: accountLoading } = useAccount();
   const { setLoginOverlayVisible } = useUI();
 
-  // Set login overlay visibility based on account, but only after loading is complete
+  // Set login overlay visibility based on account
   useEffect(() => {
     if (!accountLoading) {
       setLoginOverlayVisible(!accountAddress);
@@ -386,6 +387,7 @@ export default function AppPage() {
 
   return (
     <PageWrapper>
+      <AccountDebug />
       <PortfolioOverview />
       {!accountAddress && <LoginOverlay />}
     </PageWrapper>

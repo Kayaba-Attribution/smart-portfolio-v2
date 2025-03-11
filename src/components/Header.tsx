@@ -3,36 +3,26 @@
 import { useAccount } from "@/contexts/AccountContext";
 import { Button } from "./ui/button";
 import Image from "next/image";
-import { useState, useEffect } from "react";
 import { useUI } from "@/contexts/UIContext";
+import { Loader2 } from "lucide-react";
 
 export function Header() {
-  const { account, isLoading, error, registerPasskey, username, logout } =
+  const { account, accountAddress, isLoading, error, username, logout } =
     useAccount();
-  const [accountAddress, setAccountAddress] = useState<string>("");
   const { isLoginOverlayVisible } = useUI();
-
-  useEffect(() => {
-    const getAddress = async () => {
-      if (account) {
-        const addr = await account.getAddress();
-        setAccountAddress(addr);
-      }
-    };
-    getAddress();
-  }, [account]);
-
-  const handleConnect = async () => {
-    try {
-      await registerPasskey();
-      console.log("Passkey registered successfully");
-    } catch (err) {
-      console.error("Failed to register passkey:", err);
-    }
-  };
 
   // Don't render if login overlay is visible
   if (isLoginOverlayVisible) return null;
+
+  const handleConnect = async () => {
+    try {
+      // This is where we'd normally call registerPasskey, but it's better
+      // handled by the loginOverlay component now
+      console.log("Connect button clicked");
+    } catch (err) {
+      console.error("Failed to connect:", err);
+    }
+  };
 
   return (
     <div className="fixed top-0 left-0 right-0 h-16 border-b bg-background z-50">
@@ -52,7 +42,7 @@ export function Header() {
               <div className="text-red-500 text-sm mr-4">{error.message}</div>
             )}
 
-            {account ? (
+            {account && accountAddress ? (
               <div className="flex items-center gap-4">
                 <div className="text-sm">
                   {username && <span className="mr-2">{username}</span>}
@@ -67,7 +57,14 @@ export function Header() {
               </div>
             ) : (
               <Button onClick={handleConnect} disabled={isLoading}>
-                {isLoading ? "Creating Account..." : "Create Account"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  "Connect"
+                )}
               </Button>
             )}
           </div>
