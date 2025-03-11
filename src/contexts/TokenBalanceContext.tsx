@@ -117,44 +117,105 @@ const TokenBalanceContext = createContext<TokenBalanceContextType | undefined>(
   undefined
 );
 
+// Export a function that can be called from anywhere to refresh token balances
+export async function refreshTokenBalances() {
+  // Dispatch a custom event instead of calling a global function
+  const event = new CustomEvent('refresh-token-balances');
+  document.dispatchEvent(event);
+  return new Promise<void>(resolve => {
+    // Add a one-time listener to resolve the promise when refresh completes
+    const completeListener = () => {
+      resolve();
+      document.removeEventListener('refresh-token-balances-complete', completeListener);
+    };
+    document.addEventListener('refresh-token-balances-complete', completeListener, { once: true });
+    
+    // Add a timeout in case the refresh never completes
+    setTimeout(() => {
+      document.removeEventListener('refresh-token-balances-complete', completeListener);
+      resolve(); // Resolve anyway after timeout
+    }, 5000);
+  });
+}
+
 export function TokenBalanceProvider({ children }: { children: ReactNode }) {
-  const { account } = useAccount();
+  const { accountAddress } = useAccount();
   const [balances, setBalances] = useState<TokenBalances>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const refreshBalances = useCallback(async () => {
-    if (!account) return;
+    if (!accountAddress) {
+      console.log("No accountAddress, skipping token balance refresh");
+      // Dispatch completion event even when skipping
+      document.dispatchEvent(
+        new CustomEvent("refresh-token-balances-complete")
+      );
+      return;
+    }
 
-    setIsLoading(true);
     try {
-      const newBalances: TokenBalances = {};
-      const accountAddress = await account.getAddress();
+      setIsLoading(true);
+      console.log("Refreshing token balances for", accountAddress);
 
-      // Read all token balances in parallel
-      await Promise.all(
-        Object.entries(TOKENS).map(async ([symbol, token]) => {
-          const balance = (await publicClient.readContract({
+      // Fetch balances for each token
+      const newBalances: TokenBalances = {};
+
+      for (const symbol in TOKENS) {
+        try {
+          const token = TOKENS[symbol];
+          const balance = await publicClient.readContract({
             address: token.address,
             abi: ERC20_ABI.abi,
             functionName: "balanceOf",
-            args: [accountAddress],
-          })) as bigint;
-          newBalances[symbol] = formatUnits(balance, token.decimals);
-        })
-      );
+            args: [accountAddress as `0x${string}`],
+          });
+
+          newBalances[symbol] = formatUnits(balance as bigint, token.decimals);
+          console.log(`Updated balance for ${symbol}:`, newBalances[symbol]);
+        } catch (tokenError) {
+          console.error(`Error fetching ${symbol} balance:`, tokenError);
+        }
+      }
 
       setBalances(newBalances);
+
+      // Dispatch event to signal that refresh is complete
+      document.dispatchEvent(
+        new CustomEvent("refresh-token-balances-complete")
+      );
     } catch (error) {
-      console.error("Error fetching balances:", error);
+      console.error("Error refreshing token balances:", error);
+      // Still signal completion even if there was an error
+      document.dispatchEvent(
+        new CustomEvent("refresh-token-balances-complete")
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [account]);
+  }, [accountAddress]);
 
-  // Refresh balances when account changes
+  // Listen for refresh events instead of using a global variable
   useEffect(() => {
-    refreshBalances();
+    const handleRefreshEvent = () => {
+      refreshBalances();
+    };
+
+    document.addEventListener("refresh-token-balances", handleRefreshEvent);
+
+    return () => {
+      document.removeEventListener(
+        "refresh-token-balances",
+        handleRefreshEvent
+      );
+    };
   }, [refreshBalances]);
+
+  // Refresh balances when accountAddress changes
+  useEffect(() => {
+    if (accountAddress) {
+      refreshBalances();
+    }
+  }, [accountAddress, refreshBalances]);
 
   // Add function to get token values (you can replace these dummy prices with real ones later)
   const getTokenPrice = (symbol: string) => {
@@ -188,9 +249,9 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
     <TokenBalanceContext.Provider
       value={{
         balances,
-        refreshBalances,
-        isLoading,
         tokens: TOKENS,
+        isLoading,
+        refreshBalances,
         getSortedTokenBalances,
       }}
     >

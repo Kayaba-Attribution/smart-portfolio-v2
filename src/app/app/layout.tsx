@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { DebugInfo } from "@/components/DebugInfo";
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
+import { PushNotificationService } from "@/components/PushNotificationService";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Add data attribute to html element for app routes
@@ -30,6 +31,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
       <BottomNav />
       <DebugInfo />
+
+      {/* Background service for push notifications - no UI */}
+      <PushNotificationService />
     </div>
   );
 }

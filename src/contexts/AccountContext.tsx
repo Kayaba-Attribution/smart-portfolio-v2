@@ -6,15 +6,26 @@ import type {
   KernelAccountClient,
   KernelSmartAccountImplementation,
 } from "@zerodev/sdk";
-import { handleRegister, loginWithPasskey } from "@/lib/passkey";
+import {
+  handleRegister,
+  loginWithPasskey as passkeyLogin,
+} from "@/lib/passkey";
 import { encodeFunctionData } from "viem";
+import { createUser } from "@/lib/db";
+import { toast } from "sonner";
+
+// Import the refreshTokenBalances function - we'll add this to TokenBalanceContext
+import { refreshTokenBalances } from "./TokenBalanceContext";
+
+// Remove custom event system - we'll use a direct approach
 
 interface AccountContextType {
   account: KernelSmartAccountImplementation | null;
   client: KernelAccountClient | null;
+  accountAddress: string | null;
   isLoading: boolean;
   error: Error | null;
-  registerPasskey: () => Promise<void>;
+  registerPasskey: (tempId: string, displayUsername?: string) => Promise<void>;
   loginWithPasskey: (username: string) => Promise<void>;
   logout: () => void;
   username: string | null;
@@ -36,6 +47,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] =
     useState<KernelSmartAccountImplementation | null>(null);
   const [client, setClient] = useState<KernelAccountClient | null>(null);
+  const [accountAddress, setAccountAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -43,52 +55,138 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [userOpStatus, setUserOpStatus] = useState("");
   const [userOpHash, setUserOpHash] = useState<string | null>(null);
 
-  const handlePasskeyRegistration = async () => {
+  // Define login handler - simplified
+  const handlePasskeyLogin = async (tempUsername: string) => {
     setIsLoading(true);
+    setError(null);
+
     try {
-      const { account: newAccount, client: newClient } = await handleRegister();
-      setAccount(newAccount);
-      setClient(newClient);
+      console.log("Starting login with passkey");
+
+      // Get account and client
+      const { account: newAccount, client: newClient } = await passkeyLogin(
+        tempUsername
+      );
+
+      if (!newAccount || !newClient) {
+        throw new Error("Failed to get account or client during login");
+      }
+
+      // Get address - this is our real identifier
       const address = await newAccount.getAddress();
-      localStorage.setItem("accountAddress", address);
-    } catch (err) {
-      console.error("Error creating account:", err);
-      setError(
-        err instanceof Error ? err : new Error("Failed to create account")
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      console.log("Login successful! Account address:", address);
 
-  const handlePasskeyLogin = async (username: string) => {
-    setIsLoading(true);
-    try {
-      const { account: newAccount, client: newClient } = await loginWithPasskey(
-        username
-      );
+      // Update state
       setAccount(newAccount);
       setClient(newClient);
-      setUsername(username);
+      setAccountAddress(address);
+
+      // Try to get stored display username or generate one from address
+      const storedDisplayName = localStorage.getItem("displayUsername");
+      const displayName = storedDisplayName || `user_${address.slice(0, 6)}`;
+      setUsername(displayName);
+
+      // Store in localStorage for UI state persistence
+      localStorage.setItem("accountAddress", address);
+      if (!storedDisplayName) {
+        localStorage.setItem("displayUsername", displayName);
+      }
+
+      // We don't store displayName/username in localStorage since it's just UI sugar
     } catch (err) {
-      console.error("Error logging in:", err);
-      setError(err instanceof Error ? err : new Error("Failed to login"));
-      // Clear stored data on login failure
-      localStorage.removeItem("username");
+      console.error("Login failed:", err);
+      setError(err instanceof Error ? err : new Error("Login failed"));
+
+      // Clear state on failure
+      setAccount(null);
+      setClient(null);
+      setAccountAddress(null);
+      setUsername(null);
       localStorage.removeItem("accountAddress");
+      localStorage.removeItem("displayUsername");
+
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Registration handler - simplified
+  const handlePasskeyRegistration = async (
+    tempId: string,
+    displayUsername?: string
+  ) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      console.log("Starting registration with passkey");
+
+      // Create account and client, passing the displayUsername to handleRegister
+      const { account: newAccount, client: newClient } = await handleRegister(
+        tempId,
+        displayUsername
+      );
+
+      if (!newAccount || !newClient) {
+        throw new Error("Failed to get account or client during registration");
+      }
+
+      // Get address - this is our real identifier
+      const address = await newAccount.getAddress();
+      console.log("Registration successful! Account address:", address);
+
+      // Update state
+      setAccount(newAccount);
+      setClient(newClient);
+      setAccountAddress(address);
+
+      // Use provided display username or generate one from address
+      const userDisplayName =
+        displayUsername?.trim() || `user_${address.slice(0, 6)}`;
+      setUsername(userDisplayName);
+
+      // Store in localStorage for UI state persistence
+      localStorage.setItem("accountAddress", address);
+      localStorage.setItem("displayUsername", userDisplayName);
+
+      // Create user record in InstantDB - use address as primary key
+      try {
+        await createUser(address, userDisplayName);
+      } catch (dbError) {
+        console.error("DB error during registration (non-fatal):", dbError);
+      }
+    } catch (err) {
+      console.error("Registration failed:", err);
+      setError(err instanceof Error ? err : new Error("Registration failed"));
+
+      // Clear state on failure
+      setAccount(null);
+      setClient(null);
+      setAccountAddress(null);
+      setUsername(null);
+      localStorage.removeItem("accountAddress");
+      localStorage.removeItem("displayUsername");
+
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Simple logout function
   const handleLogout = () => {
     setAccount(null);
     setClient(null);
+    setAccountAddress(null);
     setUsername(null);
-    localStorage.removeItem("username");
     localStorage.removeItem("accountAddress");
+    localStorage.removeItem("displayUsername");
+    setError(null);
+    console.log("Logged out successfully");
   };
 
+  // Transaction handling function
   const handleSendUserOp = async ({
     contractAddress,
     contractABI,
@@ -102,46 +200,66 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     args: any[];
     onSuccess?: () => void;
   }) => {
-    if (!client || !account || !account.encodeCalls) {
-      throw new Error("Account or client not initialized");
+    if (!account || !client) {
+      const msg = "Cannot send transaction: No account or client";
+      console.error(msg);
+      throw new Error(msg);
     }
 
-    try {
-      setIsSendingUserOp(true);
-      setUserOpStatus("Preparing transaction...");
+    setIsSendingUserOp(true);
+    setUserOpStatus("Preparing transaction...");
 
+    try {
+      console.log("Sending transaction:", {
+        contract: contractAddress,
+        function: functionName,
+        args,
+      });
+
+      const callData = encodeFunctionData({
+        abi: contractABI,
+        functionName,
+        args,
+      });
+
+      // Use the correct method from the account instance
       const userOpHash = await client.sendUserOperation({
         callData: await account.encodeCalls([
           {
             to: contractAddress as `0x${string}`,
             value: BigInt(0),
-            data: encodeFunctionData({
-              abi: contractABI,
-              functionName,
-              args,
-            }),
+            data: callData,
           },
         ]),
       });
 
       setUserOpHash(userOpHash);
-      setUserOpStatus("Transaction sent, waiting for confirmation...");
 
-      await client.waitForUserOperationReceipt({
-        hash: userOpHash,
-      });
+      // First refresh token balances, then update status for notification
+      try {
+        console.log("Refreshing token balances after transaction");
+        await refreshTokenBalances();
+        toast.success("Balances refreshed successfully");
+      } catch (error) {
+        console.error("Error refreshing balances:", error);
+      }
 
-      // Update with a clear "completed" phrase for the notification system to detect
-      setUserOpStatus(`Transaction completed. ${userOpHash}`);
+      // Update status to trigger notification in PushNotificationManager
+      setUserOpStatus(`Transaction completed! Hash: ${userOpHash}`);
 
+      // Call onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
-      
+
       return userOpHash;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      console.error("Error sending transaction:", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      // Update status to trigger error notification in PushNotificationManager
       setUserOpStatus(`Error: ${errorMessage}`);
+
       throw err;
     } finally {
       setIsSendingUserOp(false);
@@ -153,6 +271,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       value={{
         account,
         client,
+        accountAddress,
         isLoading,
         error,
         registerPasskey: handlePasskeyRegistration,
