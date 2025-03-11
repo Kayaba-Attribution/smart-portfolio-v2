@@ -3,6 +3,7 @@
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { DebugInfo } from "@/components/DebugInfo";
+import { PushNotificationManager } from "@/components/PushNotificationManager";
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 
@@ -30,6 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
       <BottomNav />
       <DebugInfo />
+      <PushNotificationManager />
     </div>
   );
 }

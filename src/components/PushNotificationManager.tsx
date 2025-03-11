@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -51,6 +51,9 @@ export function PushNotificationManager() {
   const [autoNotify, setAutoNotify] = useState(true);
   const { userOpStatus, userOpHash } = useAccount();
 
+  // Track which transactions we've already notified about
+  const notifiedTransactions = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       setIsSupported(true);
@@ -58,28 +61,37 @@ export function PushNotificationManager() {
     }
   }, []);
 
-  // Listen for user op status changes
+  // Listen for user op status changes with improved notification logic
   useEffect(() => {
-    if (
-      subscription &&
-      autoNotify &&
-      userOpStatus &&
-      userOpStatus.includes("completed")
-    ) {
+    // Skip if no subscription, auto-notify is off, or no status
+    if (!subscription || !autoNotify || !userOpStatus || !userOpHash) return;
+
+    // Skip if we've already notified about this transaction
+    if (notifiedTransactions.current.has(userOpHash)) return;
+
+    // Handle successful transaction
+    if (userOpStatus.includes("completed")) {
       sendNotification(
         serializeSubscription(subscription),
-        `Transaction completed! Hash: ${userOpHash?.slice(0, 10)}...`
+        `Transaction completed! Hash: ${userOpHash.slice(0, 10)}...`
       );
-    } else if (
-      subscription &&
-      autoNotify &&
-      userOpStatus &&
-      userOpStatus.includes("Error")
-    ) {
+      // Mark this transaction as notified
+      notifiedTransactions.current.add(userOpHash);
+    }
+    // Handle failed transaction
+    else if (userOpStatus.includes("Error")) {
       sendNotification(
         serializeSubscription(subscription),
         `Transaction failed: ${userOpStatus}`
       );
+      // Mark this transaction as notified
+      notifiedTransactions.current.add(userOpHash);
+    }
+
+    // Keep the set from growing too large by limiting it to the most recent 50 transactions
+    if (notifiedTransactions.current.size > 50) {
+      const values = Array.from(notifiedTransactions.current);
+      notifiedTransactions.current = new Set(values.slice(values.length - 50));
     }
   }, [userOpStatus, userOpHash, subscription, autoNotify]);
 

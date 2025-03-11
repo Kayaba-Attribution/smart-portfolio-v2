@@ -12,6 +12,12 @@ import {
 } from "@/lib/passkey";
 import { encodeFunctionData } from "viem";
 import { createUser } from "@/lib/db";
+import { toast } from "sonner";
+
+// Import the refreshTokenBalances function - we'll add this to TokenBalanceContext
+import { refreshTokenBalances } from "./TokenBalanceContext";
+
+// Remove custom event system - we'll use a direct approach
 
 interface AccountContextType {
   account: KernelSmartAccountImplementation | null;
@@ -228,8 +234,20 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       });
 
       setUserOpHash(userOpHash);
-      setUserOpStatus(`Transaction sent! Hash: ${userOpHash}`);
 
+      // First refresh token balances, then update status for notification
+      try {
+        console.log("Refreshing token balances after transaction");
+        await refreshTokenBalances();
+        toast.success("Balances refreshed successfully");
+      } catch (error) {
+        console.error("Error refreshing balances:", error);
+      }
+
+      // Update status to trigger notification in PushNotificationManager
+      setUserOpStatus(`Transaction completed! Hash: ${userOpHash}`);
+
+      // Call onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
@@ -237,11 +255,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       return userOpHash;
     } catch (err) {
       console.error("Error sending transaction:", err);
-      setUserOpStatus(
-        `Transaction failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      );
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      // Update status to trigger error notification in PushNotificationManager
+      setUserOpStatus(`Error: ${errorMessage}`);
+
       throw err;
     } finally {
       setIsSendingUserOp(false);

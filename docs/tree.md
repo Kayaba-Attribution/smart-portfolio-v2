@@ -4,6 +4,7 @@
 │   └── localhost.pem
 ├── components.json
 ├── eslint.config.mjs
+├── instant.schema.ts
 ├── next.config.ts
 ├── next-env.d.ts
 ├── package.json
@@ -34,6 +35,7 @@
 │   │   ├── manifest.ts
 │   │   └── page.tsx
 │   ├── components
+│   │   ├── AccountDebug.tsx
 │   │   ├── BottomNav.tsx
 │   │   ├── Complex_deprecated_PortfolioChart.tsx
 │   │   ├── DebugInfo.tsx
@@ -43,6 +45,7 @@
 │   │   ├── LoadingAnimation.tsx
 │   │   ├── MotionWrapper.tsx
 │   │   ├── PageWrapper.tsx
+│   │   ├── PointsDisplay.tsx
 │   │   ├── PortfolioChart.tsx
 │   │   ├── providers.tsx
 │   │   ├── PushNotificationManager.tsx
@@ -73,12 +76,15 @@
 │   │   └── UIContext.tsx
 │   ├── contracts
 │   │   └── addresses.json
-│   └── lib
-│       ├── passkey.ts
-│       ├── utils.ts
-│       ├── web3.ts
-│       └── zerodev.ts
+│   ├── lib
+│   │   ├── db.ts
+│   │   ├── passkey.ts
+│   │   ├── utils.ts
+│   │   ├── web3.ts
+│   │   └── zerodev.ts
+│   └── scripts
+│       └── seedActions.js
 ├── tailwind.config.ts
 └── tsconfig.json
 
-16 directories, 65 files
+17 directories, 70 files
