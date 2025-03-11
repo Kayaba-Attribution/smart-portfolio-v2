@@ -7,7 +7,7 @@ import { Button } from "./ui/button";
 import addresses from "@/contracts/addresses.json";
 import { ERC20_FAUCET_ABI } from "../abi/erc20Faucet";
 import { POINTS_ACTIONS } from "@/lib/pointsActions";
-import { addPoints, getUserByAddressQuery, db } from "@/lib/db";
+import { addPoints, db, getUserQuery } from "@/lib/db";
 import { toast } from "sonner";
 
 export function Faucet() {
@@ -16,10 +16,16 @@ export function Faucet() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get the user profile data directly in the component
-  const { data: userData } = accountAddress
-    ? db.useQuery(getUserByAddressQuery(accountAddress))
-    : { data: null };
+  // Get the user profile data using getUserQuery
+  const { data: userData, isLoading: isLoadingProfile } = accountAddress
+    ? db.useQuery(getUserQuery(accountAddress))
+    : { data: null, isLoading: false };
+
+  console.log("Query debug - address:", accountAddress);
+  console.log("Query debug - full response:", userData);
+
+  const userProfile = userData?.userProfiles?.[0];
+  const currentPoints = userProfile?.totalPoints ?? 0;
 
   const handleMint = async () => {
     if (!account || !accountAddress) return;
@@ -40,31 +46,29 @@ export function Faucet() {
 
           // Award points for using the faucet - get user profile from query data
           try {
-            const userProfile = userData?.userProfiles?.[0];
-
-            if (userProfile && userProfile.id) {
-              await addPoints(
-                accountAddress,
-                POINTS_ACTIONS.FAUCET.id,
-                POINTS_ACTIONS.FAUCET.points,
-                userProfile.id
-              );
-
-              toast.success("You earned points for using the faucet! 🎉", {
-                description: "Check your profile to see your points balance.",
-              });
-            } else {
+            if (!userProfile) {
               console.error(
                 "User profile not found for address:",
-                accountAddress
+                accountAddress,
+                "Query result:",
+                userData
               );
-              toast.warning(
-                "Token claim successful, but points were not awarded",
-                {
-                  description: "User profile not found.",
-                }
-              );
+              toast.error("Could not award points - profile not found");
+              return;
             }
+
+            // Existing user - award points
+            await addPoints(
+              accountAddress,
+              POINTS_ACTIONS.FAUCET.id,
+              POINTS_ACTIONS.FAUCET.points,
+              currentPoints,
+              userProfile.id
+            );
+
+            toast.success("You earned points for using the faucet! 🎉", {
+              description: "Check your profile to see your points balance.",
+            });
           } catch (error) {
             console.error("Error awarding points:", error);
             toast.warning(
@@ -93,7 +97,10 @@ export function Faucet() {
 
   return (
     <div>
-      <Button onClick={handleMint} disabled={isLoading || !account}>
+      <Button
+        onClick={handleMint}
+        disabled={isLoading || !account || isLoadingProfile}
+      >
         {isLoading ? "Minting..." : "Get Test Tokens"}
       </Button>
 

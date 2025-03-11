@@ -67,7 +67,6 @@ export function getUserQuery(walletAddress: string) {
     return {
         userProfiles: {
             $: { where: { walletAddress } },
-            user: {}, // Include the linked user
         },
     };
 }
@@ -83,6 +82,7 @@ export async function addPoints(
     userId: string,
     actionId: string,
     points: number,
+    userPoints: number,
     userProfileId?: string
 ) {
     // Generate a unique ID for the transaction
@@ -91,6 +91,8 @@ export async function addPoints(
     try {
         // ID to update - either the provided profile ID or assume userId is the ID
         const profileIdToUpdate = userProfileId || userId;
+
+        const newPoints = userPoints + points;
 
         // Create a points transaction, update the user's total points, and create links
         await db.transact([
@@ -111,7 +113,7 @@ export async function addPoints(
             tx.userProfiles[profileIdToUpdate]
                 .update({
                     // Use a lambda to increment the current value
-                    totalPoints: (current: number | undefined) => (current || 0) + points,
+                    totalPoints: newPoints,
                 })
                 // Create link back to the transaction
                 .link({
@@ -178,8 +180,8 @@ export async function createPortfolio(userId: string, type: string) {
  * @param actionId The ID of the action
  * @param points The number of points to award
  */
-export async function awardPointsForAction(userId: string, actionName: string, actionId: string, points: number) {
-    await addPoints(userId, actionId, points);
+export async function awardPointsForAction(userId: string, actionName: string, actionId: string, points: number, userPoints: number) {
+    await addPoints(userId, actionId, points, userPoints);
 }
 
 /**
