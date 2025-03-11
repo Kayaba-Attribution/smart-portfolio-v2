@@ -36,26 +36,74 @@ function formatUsername(username: string): string {
   return formatted;
 }
 
+/**
+ * Check if a passkey exists for a given username
+ * @param username The username to check
+ * @returns A boolean indicating whether a passkey exists
+ */
+export async function checkPasskeyExists(username: string): Promise<boolean> {
+    try {
+        const formattedUsername = formatUsername(username);
+
+        // Attempt to use the passkey in login mode
+        // This will throw an error if the passkey doesn't exist
+        await toWebAuthnKey({
+            passkeyName: formattedUsername,
+            passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
+            mode: WebAuthnMode.Login,
+        });
+
+        // If we made it here, the passkey exists
+        return true;
+    } catch (error) {
+        console.log("Passkey check failed:", error);
+        // If we got an error, the passkey doesn't exist or something went wrong
+        return false;
+    }
+}
+
 // Function to be called when "Register" is clicked
-export async function handleRegister() {
-  const webAuthnKey = await toWebAuthnKey({
-    passkeyName: ZERODEV_CONFIG.passkeyName,
-    passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
-    mode: WebAuthnMode.Register,
-    passkeyServerHeaders: {},
-  });
+export async function handleRegister(username?: string) {
+    console.log("Registering with username:", username);
 
-  const passkeyValidator = await toPasskeyValidator(publicClient, {
-    webAuthnKey,
-    entryPoint: ZERODEV_CONFIG.entryPoint,
-    kernelVersion: ZERODEV_CONFIG.kernelVersion,
-    validatorContractVersion: ZERODEV_CONFIG.validatorVersion,
-  });
+    try {
+        const formattedUsername = username ? formatUsername(username) : ZERODEV_CONFIG.passkeyName;
+        console.log("Formatted username:", formattedUsername);
+        console.log("Using passkey server URL:", ZERODEV_CONFIG.passkeyServerUrl);
 
-  const { kernelAccount, kernelClient } = await createAccountAndClient(passkeyValidator);
-  
-  // Return the account and client
-  return { account: kernelAccount, client: kernelClient };
+        console.log("Creating WebAuthn key...");
+        const webAuthnKey = await toWebAuthnKey({
+            passkeyName: formattedUsername,
+            passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
+            mode: WebAuthnMode.Register,
+            passkeyServerHeaders: {},
+        });
+        console.log("WebAuthn key created successfully");
+
+        console.log("Creating passkey validator...");
+        const passkeyValidator = await toPasskeyValidator(publicClient, {
+            webAuthnKey,
+            entryPoint: ZERODEV_CONFIG.entryPoint,
+            kernelVersion: ZERODEV_CONFIG.kernelVersion,
+            validatorContractVersion: ZERODEV_CONFIG.validatorVersion,
+        });
+        console.log("Passkey validator created successfully");
+
+        console.log("Creating account and client...");
+        const { kernelAccount, kernelClient } = await createAccountAndClient(passkeyValidator);
+        console.log("Account and client created successfully");
+
+        // Return the account and client
+        return { account: kernelAccount, client: kernelClient };
+    } catch (error) {
+        console.error("Error in handleRegister:", error);
+        if (error instanceof Error) {
+            console.error("Error name:", error.name);
+            console.error("Error message:", error.message);
+            console.error("Error stack:", error.stack);
+        }
+        throw error; // Rethrow to allow proper error handling upstream
+    }
 }
 
 // handleLogin
@@ -190,24 +238,32 @@ export async function createAccountWithPasskey(username: string) {
 
 export async function loginWithPasskey(username: string) {
   try {
-    console.log("Starting passkey login...");
+      console.log("Starting passkey login process...");
+      console.log("Username before formatting:", username);
 
     const entryPoint = getEntryPoint("0.7");
     const formattedUsername = formatUsername(username);
+      console.log("Formatted username for login:", formattedUsername);
+      console.log("Using passkey server URL:", ZERODEV_CONFIG.passkeyServerUrl);
 
+      console.log("Creating WebAuthn key for login...");
     const webAuthnKey = await toWebAuthnKey({
       passkeyName: formattedUsername,
       passkeyServerUrl: ZERODEV_CONFIG.passkeyServerUrl,
       mode: WebAuthnMode.Login,
     });
+      console.log("WebAuthn key created successfully for login");
 
+      console.log("Creating passkey validator...");
     const validator = await toPasskeyValidator(publicClient, {
       webAuthnKey,
       entryPoint,
       kernelVersion: KERNEL_V3_1,
       validatorContractVersion: PasskeyValidatorContractVersion.V0_0_2,
     });
+      console.log("Passkey validator created successfully");
 
+      console.log("Creating kernel account...");
     const account = await createKernelAccount(publicClient, {
       plugins: {
         sudo: validator,
@@ -215,14 +271,19 @@ export async function loginWithPasskey(username: string) {
       entryPoint,
       kernelVersion: KERNEL_V3_1,
     });
+      console.log("Kernel account created successfully");
+      console.log("Account address:", await account.getAddress());
 
     // Create paymaster client
+      console.log("Creating paymaster client...");
     const paymasterClient = createZeroDevPaymasterClient({
       chain: ZERODEV_CONFIG.chain,
       transport: http(ZERODEV_CONFIG.paymasterUrl),
     });
+      console.log("Paymaster client created successfully");
 
     // Create client with proper paymaster configuration
+      console.log("Creating kernel client...");
     const client = await createKernelAccountClient({
       account,
       chain: ZERODEV_CONFIG.chain,
@@ -235,10 +296,19 @@ export async function loginWithPasskey(username: string) {
         },
       },
     });
+      console.log("Kernel client created successfully");
+      console.log("Login process completed successfully");
 
     return { account, client };
   } catch (error) {
     console.error("Error logging in with passkey:", error);
+      if (error instanceof Error) {
+          console.error("Error name:", error.name);
+          console.error("Error message:", error.message);
+          console.error("Error stack:", error.stack);
+      } else {
+          console.error("Non-Error object thrown:", typeof error, JSON.stringify(error));
+      }
     throw error;
   }
 }
