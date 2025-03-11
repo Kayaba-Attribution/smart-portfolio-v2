@@ -1,21 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import {
   subscribeUser,
   unsubscribeUser,
   sendNotification,
 } from "@/app/actions";
-import { useAccount } from "@/contexts/AccountContext";
 
 // URL conversion utility
 function urlBase64ToUint8Array(base64String: string) {
@@ -42,50 +34,27 @@ function serializeSubscription(subscription: PushSubscription) {
   };
 }
 
-// Helper to manage notified transactions
-const NOTIFICATION_STORAGE_KEY = "notified_transactions";
-const MAX_TRACKED_TRANSACTIONS = 50;
-
-function getNotifiedTransactions(): string[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const saved = localStorage.getItem(NOTIFICATION_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch (error) {
-    console.error("Error getting notified transactions:", error);
-    return [];
-  }
-}
-
-function saveNotifiedTransaction(txHash: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const current = getNotifiedTransactions();
-    // Add new hash and keep only the most recent MAX_TRACKED_TRANSACTIONS
-    const updated = [...current, txHash].slice(-MAX_TRACKED_TRANSACTIONS);
-    localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(updated));
-  } catch (error) {
-    console.error("Error saving notified transaction:", error);
-  }
-}
-
-function hasBeenNotified(txHash: string): boolean {
-  return getNotifiedTransactions().includes(txHash);
-}
-
 export function PushNotificationManager() {
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null
   );
   const [message, setMessage] = useState("");
-  const [autoNotify, setAutoNotify] = useState(true);
-  const { userOpStatus, userOpHash } = useAccount();
+  const [autoNotify, setAutoNotify] = useState(() => {
+    // Get initial value from localStorage if available
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("autoNotify");
+      return saved === null ? true : saved === "true";
+    }
+    return true;
+  });
 
-  // Get notification state from localStorage
-  const notifiedTransactions = useRef<Set<string>>(
-    new Set(getNotifiedTransactions())
-  );
+  // Update localStorage when autoNotify changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("autoNotify", autoNotify.toString());
+    }
+  }, [autoNotify]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
@@ -93,45 +62,6 @@ export function PushNotificationManager() {
       registerServiceWorker();
     }
   }, []);
-
-  // Improved transaction notification handler with localStorage persistence
-  useEffect(() => {
-    // Skip processing if any required condition is not met
-    if (!subscription || !autoNotify || !userOpStatus || !userOpHash) return;
-
-    // Skip if we've already notified about this transaction
-    if (
-      notifiedTransactions.current.has(userOpHash) ||
-      hasBeenNotified(userOpHash)
-    ) {
-      return;
-    }
-
-    // Process completed transactions
-    if (userOpStatus.includes("completed")) {
-      console.log("Sending success notification for:", userOpHash);
-      sendNotification(
-        serializeSubscription(subscription),
-        `Transaction completed! Hash: ${userOpHash.slice(0, 10)}...`
-      );
-
-      // Save notification state both in memory and localStorage
-      notifiedTransactions.current.add(userOpHash);
-      saveNotifiedTransaction(userOpHash);
-    }
-    // Process failed transactions
-    else if (userOpStatus.includes("Error")) {
-      console.log("Sending error notification for:", userOpHash);
-      sendNotification(
-        serializeSubscription(subscription),
-        `Transaction failed: ${userOpStatus}`
-      );
-
-      // Save notification state both in memory and localStorage
-      notifiedTransactions.current.add(userOpHash);
-      saveNotifiedTransaction(userOpHash);
-    }
-  }, [userOpStatus, userOpHash, subscription, autoNotify]);
 
   async function registerServiceWorker() {
     try {
@@ -182,65 +112,53 @@ export function PushNotificationManager() {
 
   if (!isSupported) {
     return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle>Push Notifications</CardTitle>
-          <CardDescription className="text-destructive">
-            Push notifications are not supported in this browser.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="text-destructive">
+        Push notifications are not supported in this browser.
+      </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Push Notifications</CardTitle>
-        <CardDescription>
-          {subscription
-            ? "You're currently receiving notifications"
-            : "Enable notifications to stay updated"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {subscription ? (
-          <>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Notify on transactions</span>
-              <Switch checked={autoNotify} onCheckedChange={setAutoNotify} />
-            </div>
-            <div className="space-y-4">
-              <div className="flex gap-4">
-                <input
-                  type="text"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Enter notification message"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                />
-                <Button
-                  onClick={sendTestNotification}
-                  disabled={!message.trim()}
-                >
-                  Send Test
-                </Button>
-              </div>
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={unsubscribeFromPush}
-              >
-                Unsubscribe from Notifications
+    <div className="space-y-4">
+      <div className="text-sm text-muted-foreground mb-2">
+        {subscription
+          ? "You're currently receiving notifications"
+          : "Enable notifications to stay updated about your transactions"}
+      </div>
+
+      {subscription ? (
+        <>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Notify on transactions</span>
+            <Switch checked={autoNotify} onCheckedChange={setAutoNotify} />
+          </div>
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <input
+                type="text"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter notification message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+              <Button onClick={sendTestNotification} disabled={!message.trim()}>
+                Send Test
               </Button>
             </div>
-          </>
-        ) : (
-          <Button className="w-full" onClick={subscribeToPush}>
-            Subscribe to Notifications
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={unsubscribeFromPush}
+            >
+              Unsubscribe from Notifications
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Button className="w-full" onClick={subscribeToPush}>
+          Subscribe to Notifications
+        </Button>
+      )}
+    </div>
   );
 }
