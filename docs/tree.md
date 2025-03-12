@@ -17,10 +17,10 @@
 │   ├── app
 │   │   ├── actions.ts
 │   │   ├── app
-│   │   │   ├── activity
-│   │   │   │   └── page.tsx
 │   │   │   ├── layout.tsx
 │   │   │   ├── page.tsx
+│   │   │   ├── portfolios
+│   │   │   │   └── page.tsx
 │   │   │   ├── rewards
 │   │   │   │   └── page.tsx
 │   │   │   ├── settings
@@ -49,17 +49,21 @@
 │   │   ├── PortfolioChart.tsx
 │   │   ├── providers.tsx
 │   │   ├── PushNotificationManager.tsx
+│   │   ├── PushNotificationService.tsx
 │   │   ├── TokenBalanceDisplay.tsx
 │   │   └── ui
 │   │       ├── alert.tsx
+│   │       ├── badge.tsx
 │   │       ├── button.tsx
 │   │       ├── card.tsx
 │   │       ├── chart.tsx
 │   │       ├── collapsible.tsx
 │   │       ├── dialog.tsx
 │   │       ├── input.tsx
+│   │       ├── label.tsx
 │   │       ├── progress.tsx
 │   │       ├── select.tsx
+│   │       ├── separator.tsx
 │   │       ├── skeleton.tsx
 │   │       ├── slider.tsx
 │   │       ├── sonner.tsx
@@ -76,15 +80,19 @@
 │   │   └── UIContext.tsx
 │   ├── contracts
 │   │   └── addresses.json
+│   ├── hooks
+│   │   └── useCombinedAssets.tsx
 │   ├── lib
 │   │   ├── db.ts
 │   │   ├── passkey.ts
+│   │   ├── pointsActions.ts
 │   │   ├── utils.ts
 │   │   ├── web3.ts
 │   │   └── zerodev.ts
 │   └── scripts
+│       ├── seedActionsAdmin.js
 │       └── seedActions.js
 ├── tailwind.config.ts
 └── tsconfig.json
 
-17 directories, 70 files
+18 directories, 77 files

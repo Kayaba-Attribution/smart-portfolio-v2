@@ -1,172 +1,127 @@
-# Smart Portfolio PWA App
+# Smart Portfolio: Web3 Made Simple
 
-A Progressive Web App for managing crypto portfolios with user rewards through a points system.
+<img src="public/SP_LOGO.png" alt="Smart Portfolio Logo" width="300" />
 
-## Features
+## 🚀 Project Overview
 
-- Connect with passkey authentication and custom usernames
-- Create and manage crypto portfolios
-- Track token balances and portfolio performance
-- Earn points for various actions
-- Leaderboard and rewards system
-- Accurate portfolio value calculations across multiple portfolios
+**Smart Portfolio** is a revolutionary Progressive Web App (PWA) that simplifies Web3 investing through intuitive portfolio management, seamless account abstraction, and user-friendly interfaces. Built for the Ethena Accelerator program, our platform makes crypto investing as accessible and user-friendly as traditional finance applications, but with the power and flexibility of blockchain technology.
 
-## Recent Updates
+> **Mission Statement**: Empowering everyone to navigate and maximize their Web3 investments effortlessly through excellent UI, account abstraction, seamless onboarding, and intuitive portfolio management.
 
-### Portfolio Value Calculation Fix
-We've addressed an issue with portfolio value calculations by improving how BigInt values are converted to numbers:
+## 📊 Ethena Accelerator Achievements
 
-- Fixed calculation of `totalPortfolioValue` to correctly include all portfolios
-- Implemented a direct numeric conversion method that avoids string formatting issues
-- Added additional console logging to help diagnose future calculation problems
-- Ensured proper type handling for Image components to eliminate TypeScript errors
+✅ **Participation**: Completed pitch presentation and roadmap at accelerator launch
+✅ **Activity**: Attended all weekly workshops and check-ins
+✅ **Completion**: Delivered MVP with basic feature prototype and comprehensive user journey
+🏆 **Ready for Top Prize Consideration**: Completed all required milestones
 
-This fix ensures accurate representation of portfolio values in the Assets Overview, addressing a bug where the first portfolio was being skipped in calculations.
+### Project Links:
++ [PWA App (Must add to homescreen)](https://smart-portfolio-v2.vercel.app/)
++ [Final Presentation](https://www.canva.com/design/DAGhfX77nps/6iEZhY8KOLNrjROBxFa8Rg/edit?utm_content=DAGhfX77nps&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
++ [User Journey Live Demo](https://vimeo.com/1064962359/b2818e0e87?ts=0&share=copy)
 
-## InstantDB Integration
+**Old Links:**
++ [Pitch presentation, roadmap, check-in](https://www.canva.com/design/DAGcNdLOGwU/gB6t-HYGH8PqkeTYNj8JDQ/edit)
++ [Smart Contract and deployment steps](https://github.com/Kayaba-Attribution/SmartBasket/blob/main/Hardhat/scripts/deploy.ts)
 
-This project uses InstantDB for data storage and user management. The database schema includes:
+### 🌟 Core Values
 
-- **Users**: Store user data and points
-- **Referrals**: Track user referrals
-- **Actions**: Define point-earning actions
-- **Points Transactions**: Record point history
-- **Portfolios**: Store portfolio data
+1. **Simplicity & Accessibility** – Breaking down Web3 barriers
+2. **Security & Trust** – User control with passkeys and gasless transactions
+3. **Innovation & Adaptability** – Integrating cutting-edge DeFi opportunities
+4. **Community-Driven Growth** – Evolving based on real user needs
 
-### Setting Up InstantDB
 
-1. Create an account at [InstantDB](https://instantdb.com/)
-2. Create a new app in the InstantDB dashboard
-3. Copy your App ID to the `.env.local` file:
-   ```
-   NEXT_PUBLIC_INSTANT_APP_ID=your-instant-app-id
-   ```
-4. Install dependencies:
-   ```bash
-   npm install @instantdb/react @tanstack/react-query
-   ```
+## ✨ Key Features
 
-### Seeding Initial Data
+### 🔐 Seamless Authentication
+- **Passwordless Login**: Secure authentication using passkeys - no seed phrases or passwords to remember
+- **Custom Usernames**: Personalized user experience with friendly, memorable usernames
+- **Account Abstraction**: Simplified blockchain interactions without technical complexity
 
-To seed the database with initial actions for the points system:
+### 📊 Portfolio Management
+- **Intuitive Creation**: Build custom portfolios or use templates with just a few taps
+- **Multi-Token Support**: Combine multiple tokens in a single portfolio with customizable allocations
+- **Real-Time Tracking**: Monitor portfolio performance with accurate value calculations
+- **Gasless Transactions**: Execute portfolio operations without worrying about gas fees
 
+### 💰 User Engagement & Rewards
+- **Points System**: Earn points for various actions within the platform
+- **Referral Program**: Invite friends and earn rewards through our structured referral system
+- **Achievement Tracking**: Visual representation of your platform engagement
+- **Leaderboard**: Compare your progress with other users in the community
+
+### 📱 Optimized User Experience
+- **Progressive Web App**: Install directly on your device for a native-like experience
+- **Mobile-First Design**: Optimized for smartphones with intuitive touch interactions
+- **Offline Capabilities**: Access key features even without internet connection
+- **Cross-Platform**: Works seamlessly across all modern devices and browsers
+
+## 🚀 Live Demo & Resources
+
+- [**Live PWA Application**](https://smart-portfolio-v2.vercel.app/) - Install on your mobile device for the best experience!
+- [**User Journey Demo Video**](https://vimeo.com/1064962359/b2818e0e87?ts=0&share=copy) - See Smart Portfolio in action
+- [**Final Presentation**](https://www.canva.com/design/DAGhfX77nps/6iEZhY8KOLNrjROBxFa8Rg/edit?utm_content=DAGhfX77nps&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton) - Comprehensive project overview
+
+## 🔍 Technical Highlights
+
+### 🏗️ Architecture
+- **Next.js Application**: Modern React framework with server-side rendering
+- **ZeroDev Integration**: Account abstraction using the ZeroDev SDK
+- **InstantDB Backend**: Scalable database for user profiles and engagement metrics
+- **Passkey Authentication**: WebAuthn for secure, passwordless authentication
+- **Smart Contract Integration**: Direct interaction with on-chain portfolios
+
+### 📱 PWA Implementation
+- Robust cross-browser detection for optimal display
+- Custom install flows with guided instructions
+- Manifest optimization for home screen installation
+- Layout optimizations for various device types
+
+### 🪙 Points System Implementation
+- Non-spendable points representing user reputation and engagement
+- Comprehensive activity tracking for rewarding user actions
+- Anti-abuse mechanisms to ensure fair distribution
+- Transaction-linked points for blockchain activity verification
+
+## 🚗 Roadmap
+
+### Completed (Ethena Accelerator)
+- ✅ Core PWA implementation with mobile-optimized UI
+- ✅ Passkey-based authentication system
+- ✅ Portfolio creation and management
+- ✅ Points and rewards system
+- ✅ User profile management
+
+### Coming Soon
+- 🔜 **Enso Network DeFi Integration and Ethena**
+- 🔜 Social features and community engagement
+- 🔜 AI-driven investment recommendations
+- 🔜 Cross-chain portfolio management
+- 🔜 Enhanced referral system with smart contract integration
+
+## 👨‍💻 Development & Installation
+
+### For Users
+Simply visit [https://smart-portfolio-v2.vercel.app/](https://smart-portfolio-v2.vercel.app/) on your mobile device and follow the on-screen instructions to add the app to your home screen.
+
+### For Developers
 ```bash
-npm run seed
-```
+# Clone the repository
+git clone https://github.com/YourUsername/SmartPortfolio-V2.git
 
-## Development
+# Install dependencies
+npm install
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Copy `.env.example` to `.env.local` and fill in the required environment variables
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local with your credentials
 
-## Authentication Flow
-
-1. New users can create an account by choosing a username and registering with a passkey
-2. The passkey is created with a friendly name that combines the username and app name (e.g., "username - SmartPortfolio")
-3. Returning users sign in with their username and previously registered passkey
-4. The wallet address serves as the unique identifier in the database, while the username is used for display purposes
-5. No automatic login - users must explicitly sign in each time they visit the app
-6. The app validates the existence of passkeys during initialization to properly display login/register screens
-7. If passkeys are deleted from the device, the app will automatically detect this and show the registration screen
-
-## Passkey Validation
-
-The app uses a robust passkey validation system:
-
-1. When the app loads, it checks if stored usernames have valid passkeys on the device
-2. If passkeys are missing, it automatically cleans up localStorage to prevent authentication issues
-3. The login screen allows switching between registration and login modes
-4. The username is displayed in the header, fetched from the database using the wallet address
-5. The app properly handles cases where passkeys might be deleted from the device
-
-## Points System
-
-Users earn points through various actions:
-
-- Email verification: 50 points
-- Successful referral: 100 points
-- Creating a portfolio from a template: 25 points
-- Creating a custom portfolio: 50 points
-- Daily login: 10 points
-- Sharing on social media: 15 points
-
-Points are non-spendable and represent user reputation and engagement.
-
-## Architecture
-
-### Account Management
-
-The application uses a context-based approach for managing user accounts:
-
-- **AccountContext**: Handles wallet connections and user authentication
-  - Stores the wallet address directly as `accountAddress` for easy access
-  - Creates InstantDB user records when new wallets are registered
-  - Provides authentication state throughout the application
-  - Allows users to choose custom usernames during registration
-  - Passkeys are created with a combined name format: "username - SmartPortfolio"
-  - The Header component queries the database to display the username using the wallet address
-
-### Database Structure
-
-The InstantDB schema is defined in `instant.schema.ts` and includes:
-
-- Users entity with wallet address, username, and points tracking
-- Referrals for tracking user referrals
-- Actions for defining point-earning activities
-- Points transactions for recording point history
-- Portfolios for storing portfolio data
-
-## Building for Production
-
-```bash
-npm run build
-```
-
-## Running in PWA Mode
-
-For the best experience, install the app as a PWA on your device. Instructions for installation appear on the landing page.
-
-## Getting Started
-
-First, run the development server:
-
-```bash
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-vercel
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built with ❤️ for the Ethena Accelerator Program
