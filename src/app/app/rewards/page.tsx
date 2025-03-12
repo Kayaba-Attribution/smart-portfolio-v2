@@ -20,7 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ExternalLink, Award, Trophy, Medal } from "lucide-react";
+import { ExternalLink, Award, Trophy, Medal, Share2, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Define TypeScript interface for transaction data
 interface PointTransaction {
@@ -350,6 +351,56 @@ export default function RewardsPage() {
                 </Table>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Coming Soon: Referrals */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center text-base">
+              <Share2 className="mr-2 h-4 w-4" />
+              Coming Soon: Referral Program
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-3 gap-4 mb-3">
+              <div className="p-3 bg-muted/50 rounded-lg text-center">
+                <div className="text-xs font-medium text-muted-foreground">
+                  Referral Bonus
+                </div>
+                <div className="text-xl font-bold text-primary">+500</div>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg text-center">
+                <div className="text-xs font-medium text-muted-foreground">
+                  Friend Bonus
+                </div>
+                <div className="text-xl font-bold text-primary">+250</div>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg text-center">
+                <div className="text-xs font-medium text-muted-foreground">
+                  Max Referrals
+                </div>
+                <div className="text-xl font-bold text-primary">10</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+              <Mail className="h-5 w-5 text-primary flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground">
+                  Email verification required to participate in the referral
+                  program
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled
+                className="flex-shrink-0 h-7 text-xs px-2"
+              >
+                Coming Soon
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

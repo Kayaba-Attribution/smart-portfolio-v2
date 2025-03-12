@@ -30,7 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <AnimatePresence mode="wait">{children}</AnimatePresence>
       </main>
       <BottomNav />
-      <DebugInfo />
+      {/* <DebugInfo /> */}
 
       {/* Background services - no UI */}
       <PushNotificationService />
