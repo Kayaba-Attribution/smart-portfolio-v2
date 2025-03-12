@@ -108,13 +108,12 @@ export default function PortfoliosPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-40 flex items-center justify-center text-muted-foreground">
-              <Button
-                variant="outline"
-                onClick={() => (window.location.href = "/app/trade")}
-              >
-                Create Portfolio
-              </Button>
+            <div className="h-40 flex flex-col items-center justify-center text-muted-foreground">
+              <p className="text-center max-w-md">
+                Head over to the Trade section to create your first portfolio.
+                You can choose from templates or build a custom portfolio with
+                your preferred tokens.
+              </p>
             </div>
           </CardContent>
         </Card>

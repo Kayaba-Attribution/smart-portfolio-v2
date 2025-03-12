@@ -101,16 +101,27 @@ interface TokenBalances {
   [symbol: string]: string;
 }
 
+export interface TokenBalance {
+  symbol: string;
+  balance: string;
+  value: number;
+  portfolioBalance?: string;
+  portfolioValue?: number;
+  totalBalance?: string;
+  totalValue?: number;
+  source?: "wallet" | "portfolio" | "combined";
+}
+
 interface TokenBalanceContextType {
   balances: TokenBalances;
   tokens: Record<string, Token>;
   isLoading: boolean;
   refreshBalances: () => Promise<void>;
-  getSortedTokenBalances: () => Array<{
-    symbol: string;
-    balance: string;
-    value: number;
-  }>;
+  getSortedTokenBalances: () => TokenBalance[];
+  getCombinedTokenBalances: (
+    portfolioBalances?: Record<string, TokenBalance>
+  ) => TokenBalance[];
+  getTokenPrice: (symbol: string) => number;
 }
 
 const TokenBalanceContext = createContext<TokenBalanceContextType | undefined>(
@@ -120,19 +131,29 @@ const TokenBalanceContext = createContext<TokenBalanceContextType | undefined>(
 // Export a function that can be called from anywhere to refresh token balances
 export async function refreshTokenBalances() {
   // Dispatch a custom event instead of calling a global function
-  const event = new CustomEvent('refresh-token-balances');
+  const event = new CustomEvent("refresh-token-balances");
   document.dispatchEvent(event);
-  return new Promise<void>(resolve => {
+  return new Promise<void>((resolve) => {
     // Add a one-time listener to resolve the promise when refresh completes
     const completeListener = () => {
       resolve();
-      document.removeEventListener('refresh-token-balances-complete', completeListener);
+      document.removeEventListener(
+        "refresh-token-balances-complete",
+        completeListener
+      );
     };
-    document.addEventListener('refresh-token-balances-complete', completeListener, { once: true });
-    
+    document.addEventListener(
+      "refresh-token-balances-complete",
+      completeListener,
+      { once: true }
+    );
+
     // Add a timeout in case the refresh never completes
     setTimeout(() => {
-      document.removeEventListener('refresh-token-balances-complete', completeListener);
+      document.removeEventListener(
+        "refresh-token-balances-complete",
+        completeListener
+      );
       resolve(); // Resolve anyway after timeout
     }, 5000);
   });
@@ -235,15 +256,68 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
     return dummyPrices[symbol] || 0;
   };
 
-  const getSortedTokenBalances = () => {
+  const getSortedTokenBalances = useCallback(() => {
     return Object.entries(balances)
       .map(([symbol, balance]) => ({
         symbol,
         balance,
         value: parseFloat(balance) * getTokenPrice(symbol),
+        source: "wallet" as const,
       }))
       .sort((a, b) => b.value - a.value);
-  };
+  }, [balances]);
+
+  // NEW: Function to combine wallet balances with portfolio assets
+  const getCombinedTokenBalances = useCallback(
+    (portfolioBalances: Record<string, TokenBalance> = {}) => {
+      const walletBalances = getSortedTokenBalances();
+      const combinedBalances: Record<string, TokenBalance> = {};
+
+      // First, add all wallet balances to the combined balances
+      walletBalances.forEach((tokenBalance) => {
+        combinedBalances[tokenBalance.symbol] = {
+          ...tokenBalance,
+          totalBalance: tokenBalance.balance,
+          totalValue: tokenBalance.value,
+        };
+      });
+
+      // Then, process portfolio balances
+      Object.values(portfolioBalances).forEach((portfolioToken) => {
+        const symbol = portfolioToken.symbol;
+        if (combinedBalances[symbol]) {
+          // This token exists in both wallet and portfolio
+          combinedBalances[symbol] = {
+            ...combinedBalances[symbol],
+            portfolioBalance: portfolioToken.balance,
+            portfolioValue: portfolioToken.value,
+            totalBalance: (
+              parseFloat(combinedBalances[symbol].balance) +
+              parseFloat(portfolioToken.balance)
+            ).toString(),
+            totalValue: combinedBalances[symbol].value + portfolioToken.value,
+            source: "combined" as const,
+          };
+        } else {
+          // This token only exists in the portfolio
+          combinedBalances[symbol] = {
+            ...portfolioToken,
+            portfolioBalance: portfolioToken.balance,
+            portfolioValue: portfolioToken.value,
+            totalBalance: portfolioToken.balance,
+            totalValue: portfolioToken.value,
+            source: "portfolio" as const,
+          };
+        }
+      });
+
+      // Return sorted by total value
+      return Object.values(combinedBalances).sort(
+        (a, b) => (b.totalValue || 0) - (a.totalValue || 0)
+      );
+    },
+    [getSortedTokenBalances]
+  );
 
   return (
     <TokenBalanceContext.Provider
@@ -253,6 +327,8 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
         isLoading,
         refreshBalances,
         getSortedTokenBalances,
+        getCombinedTokenBalances,
+        getTokenPrice,
       }}
     >
       {children}

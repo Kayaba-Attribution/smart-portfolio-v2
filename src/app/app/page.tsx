@@ -15,25 +15,29 @@ import {
   ArrowDownIcon,
   RefreshCcw,
   ExternalLink,
+  Wallet,
+  Briefcase,
 } from "lucide-react";
 import { Faucet } from "@/components/Faucet";
 import { PageWrapper } from "@/components/PageWrapper";
 import { TokenBalanceDisplay } from "@/components/TokenBalanceDisplay";
-import { useTokenBalances } from "@/contexts/TokenBalanceContext";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { useAccount } from "@/contexts/AccountContext";
+import { useTokenBalances } from "@/contexts/TokenBalanceContext";
 import { useUI } from "@/contexts/UIContext";
-
-// Dummy data for portfolio stats
-const PORTFOLIO_STATS = {
-  totalValue: 12300.45,
-  change24h: 3.4,
-  lastUpdated: new Date().toLocaleTimeString(),
-};
+import { useCombinedAssets } from "@/hooks/useCombinedAssets";
+import { usePortfolio } from "@/contexts/PortfolioContext";
 
 function LoginOverlay() {
-  const { registerPasskey, loginWithPasskey, isLoading } = useAccount();
+  const {
+    registerPasskey,
+    loginWithPasskey,
+    isLoading: authLoading,
+    account,
+  } = useAccount();
+  const { isLoading: tokenLoading } = useTokenBalances();
+  const { isLoading: portfolioLoading } = usePortfolio();
   const [hasAccount, setHasAccount] = useState(false);
   const [registrationError, setRegistrationError] = useState<string | null>(
     null
@@ -45,6 +49,13 @@ function LoginOverlay() {
     const savedAddress = localStorage.getItem("accountAddress");
     setHasAccount(!!savedAddress);
   }, []);
+
+  // Separate loading state calculations:
+  // Authentication loading (before login)
+  const isAuthLoading = authLoading;
+
+  // Data loading (only after authenticated)
+  const isDataLoading = !!account && (tokenLoading || portfolioLoading);
 
   const handleRegister = async () => {
     try {
@@ -135,15 +146,29 @@ function LoginOverlay() {
             <div className="text-red-500 text-sm">{registrationError}</div>
           )}
 
+          {isAuthLoading && (
+            <div className="flex items-center justify-center py-2 text-sm text-muted-foreground">
+              <RefreshCcw className="h-4 w-4 animate-spin mr-2" />
+              <span>Authenticating...</span>
+            </div>
+          )}
+
+          {isDataLoading && (
+            <div className="flex items-center justify-center py-2 text-sm text-muted-foreground">
+              <RefreshCcw className="h-4 w-4 animate-spin mr-2" />
+              <span>Loading your portfolio data...</span>
+            </div>
+          )}
+
           {hasAccount ? (
             <>
               <Button
                 className="w-full"
                 size="lg"
                 onClick={handleLogin}
-                disabled={isLoading}
+                disabled={isAuthLoading || isDataLoading}
               >
-                {isLoading ? "Signing in..." : "Sign In with Passkey"}
+                {authLoading ? "Signing in..." : "Sign In with Passkey"}
               </Button>
               <Button
                 className="w-full"
@@ -165,16 +190,16 @@ function LoginOverlay() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter a username"
-                  disabled={isLoading}
+                  disabled={isAuthLoading || isDataLoading}
                 />
               </div>
               <Button
                 className="w-full"
                 size="lg"
                 onClick={handleRegister}
-                disabled={isLoading}
+                disabled={isAuthLoading || isDataLoading}
               >
-                {isLoading
+                {authLoading
                   ? "Creating Account..."
                   : "Create Account with Passkey"}
               </Button>
@@ -194,18 +219,23 @@ function LoginOverlay() {
 }
 
 function PortfolioOverview() {
-  const { balances, refreshBalances, isLoading } = useTokenBalances();
+  const { refreshBalances, isLoading: tokenLoading } = useTokenBalances();
+  const { isLoading: portfolioLoading, fetchPortfolios } = usePortfolio();
   const { accountAddress } = useAccount();
+  const { totalAssetValue, totalPortfolioValue, totalWalletValue } =
+    useCombinedAssets();
 
-  // Calculate total portfolio value
-  const totalValue = Object.entries(balances).reduce(
-    (acc, [symbol, balance]) => {
-      const dummyPrice =
-        symbol === "USDC" ? 1 : symbol === "WBTC" ? 40000 : 2000;
-      return acc + parseFloat(balance) * dummyPrice;
-    },
-    0
-  );
+  // Calculate percentage change based on a dummy value (this could be improved with real data)
+  const dummyChange = 3.4;
+
+  // Function to refresh all data
+  const refreshAllData = async () => {
+    await refreshBalances();
+    if (accountAddress) await fetchPortfolios();
+  };
+
+  // Loading state when we're fetching initial data
+  const isLoading = tokenLoading || portfolioLoading;
 
   if (!accountAddress) {
     return (
@@ -230,24 +260,30 @@ function PortfolioOverview() {
               </div>
               <div
                 className={`flex items-center mr-8 ${
-                  PORTFOLIO_STATS.change24h >= 0
-                    ? "text-green-500"
-                    : "text-red-500"
+                  dummyChange >= 0 ? "text-green-500" : "text-red-500"
                 }`}
               >
-                {PORTFOLIO_STATS.change24h >= 0 ? "+" : "-"}
-                {Math.abs(PORTFOLIO_STATS.change24h)}%
-                {PORTFOLIO_STATS.change24h >= 0 ? "📈" : "📉"}
+                {dummyChange >= 0 ? "+" : "-"}
+                {Math.abs(dummyChange)}%{dummyChange >= 0 ? "📈" : "📉"}
               </div>
             </div>
 
             <div className="flex justify-between items-center">
-              <div className="text-4xl font-bold">
-                $
-                {totalValue.toLocaleString(undefined, {
-                  maximumFractionDigits: 2,
-                })}
-              </div>
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="text-4xl font-bold">$---.--</div>
+                  <div className="animate-spin w-4 h-4">
+                    <RefreshCcw className="w-4 h-4" />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-4xl font-bold">
+                  $
+                  {totalAssetValue.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              )}
               <div className="text-sm text-muted-foreground">
                 Last Updated: <br />
                 {new Date().toLocaleTimeString()}
@@ -258,19 +294,101 @@ function PortfolioOverview() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={refreshBalances}
+                onClick={refreshAllData}
                 disabled={isLoading}
                 className="h-8 w-8 p-0"
               >
-                <RefreshCcw className="h-4 w-4" />
+                <RefreshCcw
+                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                />
               </Button>
             </div>
           </CardContent>
         </Card>
 
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Wallet className="h-4 w-4 mr-2 text-primary" />
+                  <span className="text-sm font-medium">Wallet Assets</span>
+                </div>
+                <div className="font-semibold">
+                  {isLoading ? (
+                    <span className="flex items-center space-x-1">
+                      <span>$---.--</span>
+                      {tokenLoading && (
+                        <div className="animate-spin w-3 h-3">
+                          <RefreshCcw className="w-3 h-3" />
+                        </div>
+                      )}
+                    </span>
+                  ) : (
+                    <span>
+                      $
+                      {totalWalletValue.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Briefcase className="h-4 w-4 mr-2 text-green-500" />
+                  <span className="text-sm font-medium">Portfolio Assets</span>
+                </div>
+                <div className="font-semibold">
+                  {isLoading ? (
+                    <span className="flex items-center space-x-1">
+                      <span>$---.--</span>
+                      {portfolioLoading && (
+                        <div className="animate-spin w-3 h-3">
+                          <RefreshCcw className="w-3 h-3" />
+                        </div>
+                      )}
+                    </span>
+                  ) : (
+                    <span>
+                      $
+                      {totalPortfolioValue.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="w-full h-px bg-muted my-2"></div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Total Value</span>
+                <div className="font-bold">
+                  {isLoading ? (
+                    <span className="flex items-center space-x-1">
+                      <span>$---.--</span>
+                      <div className="animate-spin w-3 h-3">
+                        <RefreshCcw className="w-3 h-3" />
+                      </div>
+                    </span>
+                  ) : (
+                    <span>
+                      $
+                      {totalAssetValue.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <PortfolioChart currentValue={totalValue} />
+      <PortfolioChart currentValue={totalAssetValue} />
       <TokenBalanceDisplay />
 
       <Card>

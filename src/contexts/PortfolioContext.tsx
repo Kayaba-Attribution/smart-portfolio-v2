@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import { formatUnits } from "viem";
 import { useAccount } from "@/contexts/AccountContext";
 import { useTokenBalances, TOKENS } from "@/contexts/TokenBalanceContext";
@@ -124,13 +130,28 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({
 
     try {
       setIsLoading(true);
-      // Get user baskets
-      const userBaskets = (await publicClient.readContract({
+      console.log("Fetching portfolios for:", accountAddress);
+
+      // Add timeout to prevent hanging on API issues (5 seconds should be enough)
+      const portfolioPromise = publicClient.readContract({
         address: addresses.core.SmartPortfolio as `0x${string}`,
         abi: SMART_PORTFOLIO_ABI.abi,
         functionName: "getUserBaskets",
         args: [accountAddress as `0x${string}`],
-      })) as Basket[];
+      });
+
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("Portfolio fetch timed out after 5 seconds"));
+        }, 5000);
+      });
+
+      // Use Promise.race to handle potential timeouts
+      const userBaskets = (await Promise.race([
+        portfolioPromise,
+        timeoutPromise,
+      ])) as Basket[];
 
       setPortfolios(userBaskets);
 
@@ -166,17 +187,46 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({
           });
         } catch (error) {
           console.error(`Error fetching details for portfolio ${i}:`, error);
+          // We'll continue with other portfolios even if one fails
         }
       }
 
       setPortfolioDetails(details);
+      console.log(
+        "Portfolios loaded:",
+        userBaskets.length,
+        "Details:",
+        details.length
+      );
     } catch (error) {
       console.error("Error fetching portfolios:", error);
-      toast.error("Failed to load portfolios");
+      // Reset state on error to prevent showing stale data
+      setPortfolios([]);
+      setPortfolioDetails([]);
+
+      // Only show error toast if it's not a timeout (which might happen regularly)
+      if (!(error instanceof Error && error.message.includes("timed out"))) {
+        toast.error("Failed to load portfolios");
+      }
     } finally {
+      // Always reset loading state regardless of success or failure
       setIsLoading(false);
     }
   }, [accountAddress]);
+
+  // Automatically fetch portfolios when account changes or on initial load
+  useEffect(() => {
+    // Only fetch if we have an account address
+    if (accountAddress) {
+      console.log("Account detected, loading portfolios automatically");
+      fetchPortfolios();
+    } else {
+      // Make sure to reset loading state when account is not present
+      setIsLoading(false);
+      setPortfolios([]);
+      setPortfolioDetails([]);
+    }
+  }, [accountAddress, fetchPortfolios]);
 
   // Sell a portfolio
   const handleSellPortfolio = async (portfolioIndex: number) => {
