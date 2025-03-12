@@ -76,14 +76,19 @@ export function getUserQuery(walletAddress: string) {
  * @param userId The user's wallet address
  * @param actionId The action ID
  * @param points The number of points to award
- * @param userProfileId The ID of the user profile (optional - if not provided, assumes userId is the profile ID)
+ * @param userPoints Current user points total
+ * @param userProfileId The ID of the user profile
+ * @param txHash The transaction hash
+ * @param chainId The chain ID
  */
 export async function addPoints(
     userId: string,
     actionId: string,
     points: number,
     userPoints: number,
-    userProfileId?: string
+    userProfileId: string,
+    txHash?: string,
+    chainId?: number
 ) {
     // Generate a unique ID for the transaction
     const transactionId = id();
@@ -103,6 +108,8 @@ export async function addPoints(
                     actionId,
                     points,
                     timestamp: Date.now(),
+                    txHash: txHash || '',
+                    chainId: chainId || 0,
                 })
                 // Create links to user profile and action
                 .link({
@@ -179,9 +186,22 @@ export async function createPortfolio(userId: string, type: string) {
  * @param actionName The name of the action
  * @param actionId The ID of the action
  * @param points The number of points to award
+ * @param userPoints Current user points
+ * @param userProfileId The user profile ID
+ * @param txHash The transaction hash
+ * @param chainId The chain ID
  */
-export async function awardPointsForAction(userId: string, actionName: string, actionId: string, points: number, userPoints: number) {
-    await addPoints(userId, actionId, points, userPoints);
+export async function awardPointsForAction(
+    userId: string,
+    actionName: string,
+    actionId: string,
+    points: number,
+    userPoints: number,
+    userProfileId: string,
+    txHash?: string,
+    chainId?: number
+) {
+    await addPoints(userId, actionId, points, userPoints, userProfileId, txHash, chainId);
 }
 
 /**

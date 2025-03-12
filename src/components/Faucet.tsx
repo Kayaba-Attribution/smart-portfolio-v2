@@ -9,6 +9,7 @@ import { ERC20_FAUCET_ABI } from "../abi/erc20Faucet";
 import { POINTS_ACTIONS } from "@/lib/pointsActions";
 import { addPoints, db, getUserQuery } from "@/lib/db";
 import { toast } from "sonner";
+import { ZERODEV_CONFIG } from "@/config/zerodev";
 
 export function Faucet() {
   const { account, sendUserOp, accountAddress } = useAccount();
@@ -63,7 +64,9 @@ export function Faucet() {
               POINTS_ACTIONS.FAUCET.id,
               POINTS_ACTIONS.FAUCET.points,
               currentPoints,
-              userProfile.id
+              userProfile.id,
+              userOpHash,
+              ZERODEV_CONFIG.chain.id
             );
 
             toast.success("You earned points for using the faucet! 🎉", {

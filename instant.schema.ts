@@ -30,6 +30,8 @@ const _schema = i.schema({
             actionId: i.string().indexed(),
             points: i.number(),
             timestamp: i.number().indexed(),
+            txHash: i.string().indexed(),
+            chainId: i.number().indexed(),
         }),
 
         portfolios: i.entity({
