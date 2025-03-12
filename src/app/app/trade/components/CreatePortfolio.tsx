@@ -55,21 +55,20 @@ const RISK_TEMPLATES: Record<string, RiskTemplate> = {
   low: {
     id: "low",
     name: "Low Risk",
-    description:
-      "A stable portfolio with 60% Stablecoins, 20% BTC, and 20% LINK.",
+    description: "A stable portfolio with 60% LINK, 20% BTC, and 20% XRP.",
     allocation: {
-      USDC: 60,
+      LINK: 60,
       WBTC: 20,
-      LINK: 20,
+      XRP: 20,
     },
   },
   balanced: {
     id: "balanced",
     name: "Balanced Growth",
     description:
-      "A mix of stable assets and growth tokens: 40% Stablecoins, 30% BTC, 30% ETH.",
+      "A mix of stable and growth tokens: 40% LINK, 30% BTC, 30% ETH.",
     allocation: {
-      USDC: 40,
+      LINK: 40,
       WBTC: 30,
       WBASE: 30,
     },
@@ -78,19 +77,18 @@ const RISK_TEMPLATES: Record<string, RiskTemplate> = {
     id: "high",
     name: "High Growth",
     description:
-      "A growth-focused portfolio with 20% Stablecoins, 40% BTC, and 40% Altcoins.",
+      "A growth-focused portfolio with 40% BTC, 30% ETH, and 30% UNI.",
     allocation: {
-      USDC: 20,
       WBTC: 40,
-      WBASE: 20,
-      LINK: 20,
+      WBASE: 30,
+      UNI: 30,
     },
   },
   degen: {
     id: "degen",
     name: "Degen Play",
     description:
-      "A high-risk, high-reward portfolio with meme coins and minimal stability.",
+      "A high-risk, high-reward portfolio with meme coins for maximum volatility.",
     allocation: {
       PEPE: 30,
       SHIB: 30,
