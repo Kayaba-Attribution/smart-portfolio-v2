@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { PushNotificationService } from "@/components/PushNotificationService";
+import { PortfolioProvider } from "@/contexts/PortfolioContext";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Add data attribute to html element for app routes
@@ -24,15 +25,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         height: "100%",
       }}
     >
-      <Header />
-      <main className="h-[100dvh] pt-16 pb-20 overflow-y-auto">
-        <AnimatePresence mode="wait">{children}</AnimatePresence>
-      </main>
-      <BottomNav />
-      {/* <DebugInfo /> */}
+      <PortfolioProvider>
+        <Header />
+        <main className="h-[100dvh] pt-16 pb-20 overflow-y-auto">
+          <AnimatePresence mode="wait">{children}</AnimatePresence>
+        </main>
+        <BottomNav />
+        {/* <DebugInfo /> */}
 
-      {/* Background services - no UI */}
-      <PushNotificationService />
+        {/* Background services - no UI */}
+        <PushNotificationService />
+      </PortfolioProvider>
     </div>
   );
 }
