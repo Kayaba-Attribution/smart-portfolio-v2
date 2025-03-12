@@ -267,11 +267,17 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => b.value - a.value);
   }, [balances]);
 
-  // NEW: Function to combine wallet balances with portfolio assets
+  // Function to combine wallet balances with portfolio assets
   const getCombinedTokenBalances = useCallback(
     (portfolioBalances: Record<string, TokenBalance> = {}) => {
       const walletBalances = getSortedTokenBalances();
       const combinedBalances: Record<string, TokenBalance> = {};
+
+      console.log("Combining wallet balances with portfolio balances");
+      console.log(
+        "Portfolio balances received:",
+        Object.keys(portfolioBalances)
+      );
 
       // First, add all wallet balances to the combined balances
       walletBalances.forEach((tokenBalance) => {
@@ -283,38 +289,67 @@ export function TokenBalanceProvider({ children }: { children: ReactNode }) {
       });
 
       // Then, process portfolio balances
-      Object.values(portfolioBalances).forEach((portfolioToken) => {
-        const symbol = portfolioToken.symbol;
+      Object.entries(portfolioBalances).forEach(([symbol, portfolioToken]) => {
+        // Get clean values with defaults to prevent NaN
+        const portfolioBalance = parseFloat(portfolioToken.balance) || 0;
+        const portfolioValue = portfolioToken.value || 0;
+
+        console.log(
+          `Processing portfolio token ${symbol}: balance=${portfolioBalance}, value=${portfolioValue}`
+        );
+
         if (combinedBalances[symbol]) {
           // This token exists in both wallet and portfolio
+          const walletBalance =
+            parseFloat(combinedBalances[symbol].balance) || 0;
+          const walletValue = combinedBalances[symbol].value || 0;
+
+          const totalBalance = walletBalance + portfolioBalance;
+          const totalValue = walletValue + portfolioValue;
+
+          console.log(
+            `Combined ${symbol}: wallet=${walletValue}, portfolio=${portfolioValue}, total=${totalValue}`
+          );
+
           combinedBalances[symbol] = {
             ...combinedBalances[symbol],
             portfolioBalance: portfolioToken.balance,
-            portfolioValue: portfolioToken.value,
-            totalBalance: (
-              parseFloat(combinedBalances[symbol].balance) +
-              parseFloat(portfolioToken.balance)
-            ).toString(),
-            totalValue: combinedBalances[symbol].value + portfolioToken.value,
+            portfolioValue: portfolioValue,
+            totalBalance: totalBalance.toString(),
+            totalValue: totalValue,
             source: "combined" as const,
           };
         } else {
           // This token only exists in the portfolio
+          console.log(`Portfolio-only ${symbol}: value=${portfolioValue}`);
+
           combinedBalances[symbol] = {
             ...portfolioToken,
             portfolioBalance: portfolioToken.balance,
-            portfolioValue: portfolioToken.value,
+            portfolioValue: portfolioValue,
             totalBalance: portfolioToken.balance,
-            totalValue: portfolioToken.value,
+            totalValue: portfolioValue,
             source: "portfolio" as const,
           };
         }
       });
 
       // Return sorted by total value
-      return Object.values(combinedBalances).sort(
+      const result = Object.values(combinedBalances).sort(
         (a, b) => (b.totalValue || 0) - (a.totalValue || 0)
       );
+
+      console.log(
+        "Combined balances result:",
+        result.map((r) => ({
+          symbol: r.symbol,
+          wallet: r.value || 0,
+          portfolio: r.portfolioValue || 0,
+          total: r.totalValue || 0,
+        }))
+      );
+
+      return result;
     },
     [getSortedTokenBalances]
   );
