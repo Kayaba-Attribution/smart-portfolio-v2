@@ -24,8 +24,6 @@ import { PortfolioChart } from "@/components/PortfolioChart";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { useAccount } from "@/contexts/AccountContext";
 import { useUI } from "@/contexts/UIContext";
-import PointsDisplay from "@/components/PointsDisplay";
-import { AccountDebug } from "@/components/AccountDebug";
 
 // Dummy data for portfolio stats
 const PORTFOLIO_STATS = {
@@ -270,8 +268,6 @@ function PortfolioOverview() {
           </CardContent>
         </Card>
 
-        {/* Points Display Component */}
-        <PointsDisplay />
       </div>
 
       <PortfolioChart currentValue={totalValue} />
@@ -326,7 +322,6 @@ export default function AppPage() {
 
   return (
     <PageWrapper>
-      <AccountDebug />
       <PortfolioOverview />
       {!accountAddress && <LoginOverlay />}
     </PageWrapper>
