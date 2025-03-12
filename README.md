@@ -9,6 +9,19 @@ A Progressive Web App for managing crypto portfolios with user rewards through a
 - Track token balances and portfolio performance
 - Earn points for various actions
 - Leaderboard and rewards system
+- Accurate portfolio value calculations across multiple portfolios
+
+## Recent Updates
+
+### Portfolio Value Calculation Fix
+We've addressed an issue with portfolio value calculations by improving how BigInt values are converted to numbers:
+
+- Fixed calculation of `totalPortfolioValue` to correctly include all portfolios
+- Implemented a direct numeric conversion method that avoids string formatting issues
+- Added additional console logging to help diagnose future calculation problems
+- Ensured proper type handling for Image components to eliminate TypeScript errors
+
+This fix ensures accurate representation of portfolio values in the Assets Overview, addressing a bug where the first portfolio was being skipped in calculations.
 
 ## InstantDB Integration
 

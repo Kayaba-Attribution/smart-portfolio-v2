@@ -788,3 +788,62 @@ This implementation provides:
 - Relationship tracking between users, actions, portfolios, and transactions
 - Proper error handling with detailed logging
 - Entity linking ensuring data integrity
+
+### Portfolio Value Calculation
+
+1. **BigInt Value Handling**
+
+The application works with BigInt values from smart contracts, which requires careful handling when converting to display values:
+
+```typescript
+// AVOID: This can cause issues with formatValue when used with Number()
+const value = Number(formatValue(portfolio.totalValue)) || 0;
+
+// CORRECT: Direct numeric conversion without localization formatting
+const getNumericValue = (value: bigint, decimals = 18) => {
+  try {
+    return Number(formatUnits(value, decimals));
+  } catch (error) {
+    console.error("Error converting value to number:", error);
+    return 0;
+  }
+};
+const value = getNumericValue(portfolio.totalValue);
+```
+
+2. **Combined Assets Hook (`src/hooks/useCombinedAssets.tsx`)**
+
+The `useCombinedAssets` hook provides portfolio data for the UI by:
+- Processing portfolio details from smart contracts
+- Converting BigInt values to human-readable formats
+- Calculating total values across multiple portfolios
+- Combining wallet and portfolio balances
+
+Key considerations:
+- Always add null checks with fallbacks using `|| 0`
+- Log intermediate values for easier debugging
+- Use direct numeric conversion to avoid NaN issues
+- Ensure proper type handling in the presentation layer
+
+```typescript
+// Calculating the total value of all portfolios
+const totalPortfolioValue = useMemo(() => {
+  if (!portfolioDetails.length) return 0;
+
+  return portfolioDetails.reduce((total, portfolio, index) => {
+    if (!portfolio.totalValue) return total;
+    const value = getNumericValue(portfolio.totalValue);
+    console.log(`Portfolio ${index}: Value = ${value}`);
+    return total + value;
+  }, 0);
+}, [portfolioDetails]);
+```
+
+3. **Common Portfolio Value Bugs**
+
+When debugging portfolio values, check for:
+- String formatting issues (locale strings with commas causing NaN)
+- Missing null/undefined checks
+- Missed portfolios in iteration (especially first or last)
+- BigInt conversion issues
+- UI display vs. actual numeric calculation discrepancies

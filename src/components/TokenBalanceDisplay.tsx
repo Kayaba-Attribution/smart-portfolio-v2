@@ -34,7 +34,6 @@ export function TokenBalanceDisplay() {
     totalAssetValue,
     totalWalletValue,
     totalPortfolioValue,
-    hasPortfolios,
   } = useCombinedAssets();
   const [showAll, setShowAll] = useState(false);
 
@@ -156,7 +155,7 @@ export function TokenBalanceDisplay() {
                       <div className="relative w-8 h-8">
                         {tokens[asset.symbol]?.icon ? (
                           <Image
-                            src={tokens[asset.symbol].icon}
+                            src={tokens[asset.symbol]?.icon || ""}
                             alt={asset.symbol}
                             fill
                             className="rounded-full"
@@ -218,17 +217,28 @@ export function TokenBalanceDisplay() {
                               maximumFractionDigits: 2,
                             })}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            Wallet: $
-                            {asset.value.toLocaleString(undefined, {
-                              maximumFractionDigits: 2,
-                            })}
+                          <div className="flex flex-col text-xs text-muted-foreground">
+                            <span>
+                              Wallet: $
+                              {(asset.value || 0).toLocaleString(undefined, {
+                                maximumFractionDigits: 2,
+                              })}
+                            </span>
+                            <span>
+                              Portfolio: $
+                              {(asset.portfolioValue || 0).toLocaleString(
+                                undefined,
+                                {
+                                  maximumFractionDigits: 2,
+                                }
+                              )}
+                            </span>
                           </div>
                         </div>
                       ) : (
                         <div className="font-medium">
                           $
-                          {asset.value.toLocaleString(undefined, {
+                          {(asset.value || 0).toLocaleString(undefined, {
                             maximumFractionDigits: 2,
                           })}
                         </div>
