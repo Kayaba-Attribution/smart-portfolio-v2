@@ -120,6 +120,7 @@ async function seedActions() {
     // Execute all transactions
     if (transactions.length > 0) {
       const txResult = await db.transact(transactions);
+      console.log("txResult", txResult);
       console.log(`✅ Successfully seeded ${transactions.length} actions`);
     } else {
       console.log("No new actions to seed");
