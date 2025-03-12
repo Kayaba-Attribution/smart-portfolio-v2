@@ -2,7 +2,6 @@
 
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
-import { DebugInfo } from "@/components/DebugInfo";
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { PushNotificationService } from "@/components/PushNotificationService";

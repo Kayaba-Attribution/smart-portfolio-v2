@@ -6,16 +6,16 @@ import {
   LayoutDashboard, 
   ArrowLeftRight, 
   Gift, 
-  Bell, 
+  BriefcaseBusiness, 
   Settings 
 } from "lucide-react";
 import { useUI } from "@/contexts/UIContext";
 
 const navItems = [
-  { href: "/app", label: "Portfolio", icon: LayoutDashboard },
+  { href: "/app", label: "Dashboard", icon: LayoutDashboard },
   { href: "/app/trade", label: "Trade", icon: ArrowLeftRight },
+  { href: "/app/portfolios", label: "Portfolios", icon: BriefcaseBusiness },
   { href: "/app/rewards", label: "Rewards", icon: Gift },
-  { href: "/app/activity", label: "Activity", icon: Bell },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
