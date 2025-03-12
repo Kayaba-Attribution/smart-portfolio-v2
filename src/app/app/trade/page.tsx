@@ -50,8 +50,28 @@ export default function TradePage() {
         {mode === "portfolio" ? (
           <CreatePortfolio />
         ) : (
-          <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-            Swap interface coming soon
+          <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+            <div className="bg-primary/10 rounded-full p-4 mb-4">
+              <ArrowLeftRight className="h-10 w-10 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">
+              You discovered a new feature!
+            </h2>
+            <p className="text-muted-foreground max-w-md mb-8">
+              Coming soon: swap any live assets in your wallet with our powerful
+              DEX aggregator
+            </p>
+
+            <div className="border border-dashed border-primary/50 rounded-lg bg-muted/30 p-8 w-full max-w-lg">
+              <div className="text-center text-muted-foreground">
+                Swap interface under development
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+                  <div className="h-2 w-2 rounded-full bg-primary animate-pulse delay-150"></div>
+                  <div className="h-2 w-2 rounded-full bg-primary animate-pulse delay-300"></div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

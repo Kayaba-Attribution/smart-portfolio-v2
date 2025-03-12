@@ -13,7 +13,7 @@ import { useUI } from "@/contexts/UIContext";
 
 const navItems = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/app/trade", label: "Trade", icon: ArrowLeftRight },
+  { href: "/app/trade", label: "Invest", icon: ArrowLeftRight },
   { href: "/app/portfolios", label: "Portfolios", icon: BriefcaseBusiness },
   { href: "/app/rewards", label: "Rewards", icon: Gift },
   { href: "/app/settings", label: "Settings", icon: Settings },

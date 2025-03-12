@@ -14,7 +14,6 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   RefreshCcw,
-  ExternalLink,
   Wallet,
   Briefcase,
 } from "lucide-react";
@@ -389,35 +388,72 @@ function PortfolioOverview() {
       </div>
 
       <PortfolioChart currentValue={totalAssetValue} />
+      <div className="text-muted-foreground text-xs text-center italic">
+        Disclaimer: Chart displays simulated data and does not represent actual
+        historical performance.
+      </div>
+
+      <div className="bg-muted/40 rounded-lg p-4 mt-3 mb-5 border border-dashed border-muted-foreground/50">
+        <div className="flex items-center justify-between gap-6">
+          <div className="text-sm flex-1">
+            <h3 className="font-medium mb-1">
+              Get Test Tokens for Base Sepolia
+            </h3>
+            <p className="text-muted-foreground">
+              Claim $1000 in test USDC to try all the app features. These tokens
+              have no real value and are only available on the testnet.
+            </p>
+          </div>
+
+          <div className="flex-shrink-0">
+            <Faucet />
+          </div>
+        </div>
+      </div>
+
       <TokenBalanceDisplay />
 
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle>Live Assets Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-4 gap-4">
-            <Button className="aspect-square flex flex-col items-center justify-center p-0 h-20">
-              <ArrowUpIcon className="h-6 w-6 mb-1" />
-              <span className="text-xs">Deposit</span>
-            </Button>
-            <Button className="aspect-square flex flex-col items-center justify-center p-0 h-20">
-              <ArrowDownIcon className="h-6 w-6 mb-1" />
-              <span className="text-xs">Withdraw</span>
-            </Button>
-            <Button className="aspect-square flex flex-col items-center justify-center p-0 h-20">
-              <RefreshCcw className="h-6 w-6 mb-1" />
-              <span className="text-xs">Swap</span>
-            </Button>
-            <Button className="aspect-square flex flex-col items-center justify-center p-0 h-20">
-              <ExternalLink className="h-6 w-6 mb-1" />
-              <span className="text-xs">Invest</span>
-            </Button>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="flex flex-col items-center">
+              <Button
+                className="aspect-square flex flex-col items-center justify-center p-0 h-20 mb-1 bg-muted/50 hover:bg-muted/70 text-muted-foreground"
+                disabled
+              >
+                <ArrowUpIcon className="h-6 w-6 mb-1" />
+                <span className="text-xs">Deposit</span>
+              </Button>
+              <span className="text-xs text-muted-foreground">Coming Soon</span>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <Button
+                className="aspect-square flex flex-col items-center justify-center p-0 h-20 mb-1 bg-muted/50 hover:bg-muted/70 text-muted-foreground"
+                disabled
+              >
+                <ArrowDownIcon className="h-6 w-6 mb-1" />
+                <span className="text-xs">Withdraw</span>
+              </Button>
+              <span className="text-xs text-muted-foreground">Coming Soon</span>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <Button
+                className="aspect-square flex flex-col items-center justify-center p-0 h-20 mb-1 bg-muted/50 hover:bg-muted/70 text-muted-foreground"
+                disabled
+              >
+                <RefreshCcw className="h-6 w-6 mb-1" />
+                <span className="text-xs">Swap</span>
+              </Button>
+              <span className="text-xs text-muted-foreground">Coming Soon</span>
+            </div>
           </div>
         </CardContent>
       </Card>
-
-      <Faucet />
     </div>
   );
 }

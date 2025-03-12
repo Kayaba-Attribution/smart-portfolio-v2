@@ -10,6 +10,7 @@ import { POINTS_ACTIONS } from "@/lib/pointsActions";
 import { addPoints, db, getUserQuery } from "@/lib/db";
 import { toast } from "sonner";
 import { ZERODEV_CONFIG } from "@/config/zerodev";
+import { RefreshCcw, Wallet } from "lucide-react";
 
 export function Faucet() {
   const { account, sendUserOp, accountAddress } = useAccount();
@@ -103,8 +104,16 @@ export function Faucet() {
       <Button
         onClick={handleMint}
         disabled={isLoading || !account || isLoadingProfile}
+        className="h-16 w-16 aspect-square flex flex-col items-center justify-center text-xs p-0 rounded-md"
       >
-        {isLoading ? "Minting..." : "Get Test Tokens"}
+        {isLoading ? (
+          <RefreshCcw className="h-5 w-5 animate-spin" />
+        ) : (
+          <>
+            <Wallet className="h-6 w-6 mb-1" />
+            <span>Get Tokens</span>
+          </>
+        )}
       </Button>
 
       {error && <div className="text-red-500 mt-2 text-sm">{error}</div>}
