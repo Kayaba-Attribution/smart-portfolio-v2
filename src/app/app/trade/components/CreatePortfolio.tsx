@@ -38,6 +38,9 @@ import {
 import { publicClient } from "@/lib/web3";
 import SMART_PORTFOLIO_ABI from "@/contracts/artifacts/SmartBasket.json";
 import { toast } from "sonner";
+import { POINTS_ACTIONS } from "@/lib/pointsActions";
+import { addPoints, createPortfolio, getUserQuery, db } from "@/lib/db";
+import { ZERODEV_CONFIG } from "@/config/zerodev";
 
 // Risk template definitions
 type RiskTemplate = {
@@ -115,11 +118,19 @@ export function CreatePortfolio() {
   const [showInfo, setShowInfo] = useState(true);
   const { tokens } = useTokenBalances();
   const [allowance, setAllowance] = useState<bigint>(BigInt(0));
-  const { account, sendUserOp } = useAccount();
+  const { account, sendUserOp, accountAddress } = useAccount();
   const [isAddingToken, setIsAddingToken] = useState(false);
   const [newToken, setNewToken] = useState({ symbol: "", allocation: 0 });
   const [totalAllocation, setTotalAllocation] = useState(0);
   const [isApproving, setIsApproving] = useState(false);
+
+  // Get the user profile data for points
+  const { data: userData } = accountAddress
+    ? db.useQuery(getUserQuery(accountAddress))
+    : { data: null };
+
+  const userProfile = userData?.userProfiles?.[0];
+  const currentPoints = userProfile?.totalPoints ?? 0;
 
   // Wrap checkAllowance in useCallback
   const checkAllowance = useCallback(async () => {
@@ -229,9 +240,17 @@ export function CreatePortfolio() {
   };
 
   const handleCreatePortfolio = async () => {
-    if (!account || !amount) return;
+    if (!account || !amount || !accountAddress) return;
 
     try {
+      console.log("Starting portfolio creation with:", {
+        mode,
+        accountAddress,
+        userProfile: userProfile
+          ? { id: userProfile.id, points: userProfile.totalPoints }
+          : null,
+      });
+
       const tokens =
         mode === "template"
           ? Object.entries(RISK_TEMPLATES[selectedTemplate].allocation).map(
@@ -261,7 +280,72 @@ export function CreatePortfolio() {
         contractABI: SMART_PORTFOLIO_ABI.abi,
         functionName: "createBasket",
         args: [allocations, amountInWei],
-        onSuccess: () => {
+        onSuccess: async () => {
+          // Create portfolio in InstantDB
+          if (accountAddress && userProfile) {
+            try {
+              console.log(
+                "Transaction successful, creating portfolio in DB for:",
+                accountAddress
+              );
+
+              // Create the portfolio in InstantDB
+              const portfolioId = await createPortfolio(
+                accountAddress,
+                mode === "template" ? "template" : "custom"
+              );
+
+              console.log("Portfolio created in DB with ID:", portfolioId);
+
+              // Award points based on portfolio type
+              const actionType =
+                mode === "template"
+                  ? POINTS_ACTIONS.PORTFOLIO_TEMPLATE_CREATED
+                  : POINTS_ACTIONS.PORTFOLIO_CUSTOM_CREATED;
+
+              console.log("Adding points for action:", {
+                actionId: actionType.id,
+                actionName: actionType.name,
+                points: actionType.points,
+                currentPoints,
+                userProfileId: userProfile.id,
+              });
+
+              const transactionId = await addPoints(
+                accountAddress,
+                actionType.id,
+                actionType.points,
+                currentPoints,
+                userProfile.id,
+                userOpHash,
+                ZERODEV_CONFIG.chain.id
+              );
+
+              console.log("Points transaction created with ID:", transactionId);
+
+              toast.success(
+                `You earned ${actionType.points} points for creating a portfolio! 🎉`,
+                {
+                  description: "Check your profile to see your points balance.",
+                }
+              );
+            } catch (error) {
+              console.error("Error updating portfolio in database:", error);
+              console.error("Error details:", JSON.stringify(error, null, 2));
+              toast.warning(
+                "Portfolio created, but there was an error updating your profile",
+                {
+                  description: "Your portfolio will still be visible on-chain.",
+                }
+              );
+            }
+          } else {
+            console.error("Cannot update DB - missing data:", {
+              accountAddress,
+              userProfile: userProfile ? userProfile.id : "null",
+            });
+          }
+
           toast.success("Portfolio created successfully!");
           // Reset form
           setAmount("");

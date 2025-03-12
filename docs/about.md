@@ -570,3 +570,116 @@ graph TD
    - User profiles are stored in InstantDB with the wallet address as unique key
    - Points and other user data are associated with their wallet address
    - Username can be displayed consistently across the application
+
+### Points System Implementation
+
+The application features a comprehensive points system with transaction tracking:
+
+```mermaid
+graph TD
+    A[User Action] --> B[Contract Interaction]
+    B --> C[Transaction Success]
+    C --> D[Award Points]
+    D --> E[Update User Profile]
+    D --> F[Record Transaction]
+    F --> G[Link to Chain Data]
+```
+
+1. **Points Actions Structure (`src/lib/pointsActions.ts`)**
+```typescript
+export const POINTS_ACTIONS = {
+    FAUCET: {
+        id: '33f1576a-456f-4f81-939a-f972aca8ba0e',
+        name: 'FAUCET_USE',
+        description: 'Claimed tokens from the faucet',
+        points: 10,
+        cooldown: 86400000 // 24 hours
+    },
+    // Additional point-earning actions...
+};
+```
+
+2. **Transaction Tracking (`src/lib/db.ts`)**
+```typescript
+export async function addPoints(
+    userId: string,
+    actionId: string,
+    points: number,
+    userPoints: number,
+    userProfileId: string,
+    txHash?: string,
+    chainId?: number
+) {
+    // Create transaction with blockchain data
+    const transactionId = id();
+    
+    await db.transact([
+        // Create points transaction record with blockchain data
+        tx.pointsTransactions[transactionId]
+            .update({
+                userId,
+                actionId,
+                points,
+                timestamp: Date.now(),
+                txHash: txHash || '',
+                chainId: chainId || 0,
+            })
+            .link({ action: actionId }),
+
+        // Update user's total points
+        tx.userProfiles[userProfileId]
+            .update({ totalPoints: userPoints + points })
+            .link({ pointsTransactions: transactionId }),
+
+        // Link action to transaction for reporting
+        tx.actions[actionId].link({ transactions: transactionId })
+    ]);
+}
+```
+
+3. **Component Integration (`src/components/Faucet.tsx`)**
+```typescript
+// Get user profile data
+const { data: userData } = accountAddress
+  ? db.useQuery(getUserQuery(accountAddress))
+  : { data: null };
+
+const userProfile = userData?.userProfiles?.[0];
+const currentPoints = userProfile?.totalPoints ?? 0;
+
+// Award points after successful transaction
+const userOpHash = await sendUserOp({
+  // Contract details...
+  onSuccess: async () => {
+    // Award points with transaction tracking
+    await addPoints(
+      accountAddress,
+      POINTS_ACTIONS.FAUCET.id,
+      POINTS_ACTIONS.FAUCET.points,
+      currentPoints,
+      userProfile.id,
+      userOpHash,           // Transaction hash for traceability
+      ZERODEV_CONFIG.chain.id  // Chain ID for cross-chain support
+    );
+  }
+});
+```
+
+4. **InstantDB Schema for Points**
+```typescript
+// From instant.schema.ts
+pointsTransactions: i.entity({
+    userId: i.string().indexed(),        // User wallet address
+    actionId: i.string().indexed(),      // Action that earned points
+    points: i.number(),                  // Points awarded
+    timestamp: i.number().indexed(),     // When points were awarded
+    txHash: i.string().indexed(),        // Transaction hash for traceability
+    chainId: i.number().indexed(),       // Chain ID for cross-chain support
+}),
+```
+
+This implementation provides:
+- Complete traceability between blockchain transactions and points
+- Cross-chain support via chainId tracking
+- Action-specific point values and cooldowns
+- Relationship tracking between users, actions, and transactions

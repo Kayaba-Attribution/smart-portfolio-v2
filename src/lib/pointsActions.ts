@@ -7,10 +7,17 @@ export const POINTS_ACTIONS = {
         points: 10,
         cooldown: 86400000 // 24 hours
     },
-    CREATE_PORTFOLIO: {
-        id: 'create_portfolio',
+    PORTFOLIO_CUSTOM_CREATED: {
+        id: '453926ad-b02b-4e9a-886c-ffefe5de8d42',
         name: 'PORTFOLIO_CUSTOM_CREATED',
-        description: 'Created a new portfolio',
+        description: 'Created a new custom portfolio',
+        points: 25,
+        cooldown: 86400000 // 24 hours
+    },
+    PORTFOLIO_TEMPLATE_CREATED: {
+        id: 'e69f1531-0435-4543-8bab-0b47ae664ad8',
+        name: 'PORTFOLIO_TEMPLATE_CREATED',
+        description: 'Created a new template portfolio',
         points: 25,
         cooldown: 86400000 // 24 hours
     },

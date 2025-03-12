@@ -163,20 +163,47 @@ export async function createPortfolio(userId: string, type: string) {
     // Generate a unique ID for the portfolio
     const portfolioId = id();
 
-    // Create the portfolio
-    await db.transact([
-        // Create the portfolio
-        tx.portfolios[portfolioId].update({
-            userId,
-            type,
-            createdAt: Date.now(),
-        }),
+    console.log("Creating portfolio with ID:", portfolioId, "for user:", userId, "type:", type);
 
-        // Link the portfolio to the user
-        tx.portfolios[portfolioId].link({ user: userId }),
-    ]);
+    try {
+        // Find the user profile to get its ID for linking
+        const { data: userData } = await db.queryOnce({
+            userProfiles: {
+                $: { where: { walletAddress: userId } },
+            },
+        });
 
-    return portfolioId;
+        const userProfile = userData?.userProfiles?.[0];
+
+        if (!userProfile) {
+            console.error("User profile not found for wallet address:", userId);
+            throw new Error(`User profile not found for wallet address: ${userId}`);
+        }
+
+        console.log("Found user profile:", userProfile.id);
+
+        // Create the portfolio with explicit links
+        const result = await db.transact([
+            // Create the portfolio
+            tx.portfolios[portfolioId].update({
+                userId,
+                type,
+                createdAt: Date.now(),
+            }),
+
+            // Link the portfolio to the user - using the profile ID, not wallet address
+            tx.userProfiles[userProfile.id].link({
+                portfolios: portfolioId
+            }),
+        ]);
+
+        console.log("Portfolio creation transaction result:", result);
+
+        return portfolioId;
+    } catch (error) {
+        console.error("Error creating portfolio:", error);
+        throw error;
+    }
 }
 
 /**
