@@ -723,17 +723,9 @@ export default function LandingPage() {
                     </h2>
                     <p className="text-muted-foreground mb-6">
                       Experience secure, simplified crypto investing with Smart
-                      Portfolio.
+                      Portfolio. Join now, and start racking up points!
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4">
-                      <Button
-                        size="lg"
-                        className="w-full"
-                        onClick={() => (window.location.href = "/app")}
-                      >
-                        <ArrowRight className="mr-2 h-5 w-5" />
-                        Launch App
-                      </Button>
                       <Button
                         size="lg"
                         variant="outline"
