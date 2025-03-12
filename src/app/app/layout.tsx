@@ -2,7 +2,6 @@
 
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
-import { DebugInfo } from "@/components/DebugInfo";
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { PushNotificationService } from "@/components/PushNotificationService";
@@ -30,9 +29,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <AnimatePresence mode="wait">{children}</AnimatePresence>
       </main>
       <BottomNav />
-      <DebugInfo />
+      {/* <DebugInfo /> */}
 
-      {/* Background service for push notifications - no UI */}
+      {/* Background services - no UI */}
       <PushNotificationService />
     </div>
   );

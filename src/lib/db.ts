@@ -20,10 +20,8 @@ export { tx, id };
 
 /**
  * Creates a new user in the database when a wallet is connected
- * Uses the wallet address as the primary identifier
  * @param walletAddress The user's wallet address
  * @param displayName A display name for the user (optional)
- * @returns The ID of the user (wallet address)
  */
 export async function createUser(walletAddress: string, displayName?: string) {
     try {
@@ -69,41 +67,78 @@ export function getUserQuery(walletAddress: string) {
     return {
         userProfiles: {
             $: { where: { walletAddress } },
-            user: {}, // Include the linked user
         },
     };
 }
 
 /**
  * Adds points to a user for a specific action
- * @param userId The user's ID
+ * @param userId The user's wallet address
  * @param actionId The action ID
  * @param points The number of points to award
+ * @param userPoints Current user points total
+ * @param userProfileId The ID of the user profile
+ * @param txHash The transaction hash
+ * @param chainId The chain ID
  */
-export async function addPoints(userId: string, actionId: string, points: number) {
+export async function addPoints(
+    userId: string,
+    actionId: string,
+    points: number,
+    userPoints: number,
+    userProfileId: string,
+    txHash?: string,
+    chainId?: number
+) {
     // Generate a unique ID for the transaction
     const transactionId = id();
 
-    // Create a points transaction and update the user's total points
-    await db.transact([
-        // Create the points transaction
-        tx.pointsTransactions[transactionId].update({
-            userId,
-            actionId,
-            points,
-            timestamp: Date.now(),
-        }),
+    try {
+        // ID to update - either the provided profile ID or assume userId is the ID
+        const profileIdToUpdate = userProfileId || userId;
 
-        // Update the user's total points
-        tx.$users[userId].update({
-            // Use a lambda to increment the current value
-            totalPoints: (current: number | undefined) => (current || 0) + points,
-        }),
+        const newPoints = userPoints + points;
 
-        // Link the transaction to the user and action
-        tx.pointsTransactions[transactionId].link({ user: userId }),
-        tx.pointsTransactions[transactionId].link({ action: actionId }),
-    ]);
+        // Create a points transaction, update the user's total points, and create links
+        await db.transact([
+            // Create the points transaction
+            tx.pointsTransactions[transactionId]
+                .update({
+                    userId,
+                    actionId,
+                    points,
+                    timestamp: Date.now(),
+                    txHash: txHash || '',
+                    chainId: chainId || 0,
+                })
+                // Create links to user profile and action
+                .link({
+                    action: actionId
+                }),
+
+            // Update the user's total points
+            tx.userProfiles[profileIdToUpdate]
+                .update({
+                    // Use a lambda to increment the current value
+                    totalPoints: newPoints,
+                })
+                // Create link back to the transaction
+                .link({
+                    pointsTransactions: transactionId
+                }),
+
+            // Create link from action to the transaction
+            tx.actions[actionId].link({
+                transactions: transactionId
+            })
+        ]);
+
+        console.log(`Added ${points} points to user ${userId} for action ${actionId}`);
+        return transactionId;
+    } catch (error) {
+        console.error("Error adding points:", error);
+        throw error;
+    }
 }
 
 /**
@@ -128,20 +163,47 @@ export async function createPortfolio(userId: string, type: string) {
     // Generate a unique ID for the portfolio
     const portfolioId = id();
 
-    // Create the portfolio
-    await db.transact([
-        // Create the portfolio
-        tx.portfolios[portfolioId].update({
-            userId,
-            type,
-            createdAt: Date.now(),
-        }),
+    console.log("Creating portfolio with ID:", portfolioId, "for user:", userId, "type:", type);
 
-        // Link the portfolio to the user
-        tx.portfolios[portfolioId].link({ user: userId }),
-    ]);
+    try {
+        // Find the user profile to get its ID for linking
+        const { data: userData } = await db.queryOnce({
+            userProfiles: {
+                $: { where: { walletAddress: userId } },
+            },
+        });
 
-    return portfolioId;
+        const userProfile = userData?.userProfiles?.[0];
+
+        if (!userProfile) {
+            console.error("User profile not found for wallet address:", userId);
+            throw new Error(`User profile not found for wallet address: ${userId}`);
+        }
+
+        console.log("Found user profile:", userProfile.id);
+
+        // Create the portfolio with explicit links
+        const result = await db.transact([
+            // Create the portfolio
+            tx.portfolios[portfolioId].update({
+                userId,
+                type,
+                createdAt: Date.now(),
+            }),
+
+            // Link the portfolio to the user - using the profile ID, not wallet address
+            tx.userProfiles[userProfile.id].link({
+                portfolios: portfolioId
+            }),
+        ]);
+
+        console.log("Portfolio creation transaction result:", result);
+
+        return portfolioId;
+    } catch (error) {
+        console.error("Error creating portfolio:", error);
+        throw error;
+    }
 }
 
 /**
@@ -151,9 +213,22 @@ export async function createPortfolio(userId: string, type: string) {
  * @param actionName The name of the action
  * @param actionId The ID of the action
  * @param points The number of points to award
+ * @param userPoints Current user points
+ * @param userProfileId The user profile ID
+ * @param txHash The transaction hash
+ * @param chainId The chain ID
  */
-export async function awardPointsForAction(userId: string, actionName: string, actionId: string, points: number) {
-    await addPoints(userId, actionId, points);
+export async function awardPointsForAction(
+    userId: string,
+    actionName: string,
+    actionId: string,
+    points: number,
+    userPoints: number,
+    userProfileId: string,
+    txHash?: string,
+    chainId?: number
+) {
+    await addPoints(userId, actionId, points, userPoints, userProfileId, txHash, chainId);
 }
 
 /**

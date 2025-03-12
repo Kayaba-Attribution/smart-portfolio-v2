@@ -570,3 +570,221 @@ graph TD
    - User profiles are stored in InstantDB with the wallet address as unique key
    - Points and other user data are associated with their wallet address
    - Username can be displayed consistently across the application
+
+### Points System Implementation
+
+The application features a comprehensive points system with transaction tracking:
+
+```mermaid
+graph TD
+    A[User Action] --> B[Contract Interaction]
+    B --> C[Transaction Success]
+    C --> D[Award Points]
+    D --> E[Update User Profile]
+    D --> F[Record Transaction]
+    F --> G[Link to Chain Data]
+```
+
+1. **Points Actions Structure (`src/lib/pointsActions.ts`)**
+```typescript
+export const POINTS_ACTIONS = {
+    FAUCET: {
+        id: '33f1576a-456f-4f81-939a-f972aca8ba0e',
+        name: 'FAUCET_USE',
+        description: 'Claimed tokens from the faucet',
+        points: 10,
+        cooldown: 86400000 // 24 hours
+    },
+    PORTFOLIO_CUSTOM_CREATED: {
+        id: '453926ad-b02b-4e9a-886c-ffefe5de8d42',
+        name: 'PORTFOLIO_CUSTOM_CREATED',
+        description: 'Created a new custom portfolio',
+        points: 25,
+        cooldown: 86400000 // 24 hours
+    },
+    PORTFOLIO_TEMPLATE_CREATED: {
+        id: 'e69f1531-0435-4543-8bab-0b47ae664ad8',
+        name: 'PORTFOLIO_TEMPLATE_CREATED',
+        description: 'Created a new template portfolio',
+        points: 25,
+        cooldown: 86400000 // 24 hours
+    }
+};
+```
+
+2. **Transaction Tracking (`src/lib/db.ts`)**
+```typescript
+export async function addPoints(
+    userId: string,
+    actionId: string,
+    points: number,
+    userPoints: number,
+    userProfileId: string,
+    txHash?: string,
+    chainId?: number
+) {
+    // Generate a unique ID for the transaction
+    const transactionId = id();
+    
+    try {
+        // Create a points transaction, update the user's total points, and create links
+        await db.transact([
+            // Create points transaction record with blockchain data
+            tx.pointsTransactions[transactionId]
+                .update({
+                    userId,
+                    actionId,
+                    points,
+                    timestamp: Date.now(),
+                    txHash: txHash || '',
+                    chainId: chainId || 0,
+                })
+                .link({ action: actionId }),
+
+            // Update user's total points
+            tx.userProfiles[userProfileId]
+                .update({ totalPoints: userPoints + points })
+                .link({ pointsTransactions: transactionId }),
+
+            // Link action to transaction for reporting
+            tx.actions[actionId].link({ transactions: transactionId })
+        ]);
+        
+        return transactionId;
+    } catch (error) {
+        console.error("Error adding points:", error);
+        throw error;
+    }
+}
+```
+
+3. **Portfolio Creation with Points Integration**
+```typescript
+// In CreatePortfolio.tsx
+const handleCreatePortfolio = async () => {
+  if (!account || !amount || !accountAddress) return;
+
+  try {
+    // Transaction details...
+    const userOpHash = await sendUserOp({
+      // Contract call details...
+      onSuccess: async () => {
+        // Create portfolio in InstantDB
+        if (accountAddress && userProfile) {
+          try {
+            // Create the portfolio in InstantDB
+            const portfolioId = await createPortfolio(
+              accountAddress,
+              mode === "template" ? "template" : "custom"
+            );
+
+            // Award points based on portfolio type
+            const actionType =
+              mode === "template"
+                ? POINTS_ACTIONS.PORTFOLIO_TEMPLATE_CREATED
+                : POINTS_ACTIONS.PORTFOLIO_CUSTOM_CREATED;
+
+            const transactionId = await addPoints(
+              accountAddress,
+              actionType.id,
+              actionType.points,
+              currentPoints,
+              userProfile.id,
+              userOpHash,
+              ZERODEV_CONFIG.chain.id
+            );
+          } catch (error) {
+            // Error handling...
+          }
+        }
+      },
+    });
+  } catch (error) {
+    // Error handling...
+  }
+};
+```
+
+4. **Portfolio Database Integration**
+```typescript
+export async function createPortfolio(userId: string, type: string) {
+    // Generate a unique ID for the portfolio
+    const portfolioId = id();
+    
+    try {
+        // Find the user profile to get its ID for linking
+        const { data: userData } = await db.queryOnce({
+            userProfiles: {
+                $: { where: { walletAddress: userId } },
+            },
+        });
+
+        const userProfile = userData?.userProfiles?.[0];
+        
+        if (!userProfile) {
+            throw new Error(`User profile not found for wallet address: ${userId}`);
+        }
+
+        // Create the portfolio with explicit links
+        await db.transact([
+            // Create the portfolio
+            tx.portfolios[portfolioId].update({
+                userId,
+                type,
+                createdAt: Date.now(),
+            }),
+
+            // Link the portfolio to the user using the profile ID
+            tx.userProfiles[userProfile.id].link({
+                portfolios: portfolioId
+            }),
+        ]);
+        
+        return portfolioId;
+    } catch (error) {
+        console.error("Error creating portfolio:", error);
+        throw error;
+    }
+}
+```
+
+5. **Debugging Strategies**
+
+When implementing points integrations, detailed logging is essential for diagnosing issues:
+
+```typescript
+// Detailed debug logging
+console.log("Starting portfolio creation with:", { 
+  mode, 
+  accountAddress, 
+  userProfile: userProfile ? { id: userProfile.id, points: userProfile.totalPoints } : null 
+});
+
+// Log each step of the process
+console.log("Transaction successful, creating portfolio in DB for:", accountAddress);
+console.log("Portfolio created in DB with ID:", portfolioId);
+console.log("Adding points for action:", { 
+  actionId: actionType.id, 
+  actionName: actionType.name,
+  points: actionType.points,
+  currentPoints,
+  userProfileId: userProfile.id
+});
+console.log("Points transaction created with ID:", transactionId);
+
+// Proper error handling with detailed information
+try {
+  // Operation
+} catch (error) {
+  console.error("Error updating portfolio in database:", error);
+  console.error("Error details:", JSON.stringify(error, null, 2));
+}
+```
+
+This implementation provides:
+- Complete traceability between blockchain transactions and points
+- Cross-chain support via chainId tracking
+- Action-specific point values and cooldowns
+- Relationship tracking between users, actions, portfolios, and transactions
+- Proper error handling with detailed logging
+- Entity linking ensuring data integrity
