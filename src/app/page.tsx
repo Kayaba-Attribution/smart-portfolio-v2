@@ -28,7 +28,6 @@ import {
   Target,
   Calendar,
   Search,
-  ArrowRight,
   PlusCircle,
   Share2,
 } from "lucide-react";
