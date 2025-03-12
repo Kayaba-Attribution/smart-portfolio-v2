@@ -15,15 +15,6 @@
 ✅ **Completion**: Delivered MVP with basic feature prototype and comprehensive user journey
 🏆 **Ready for Top Prize Consideration**: Completed all required milestones
 
-### Project Links:
-+ [PWA App (Must add to homescreen)](https://smart-portfolio-v2.vercel.app/)
-+ [Final Presentation](https://www.canva.com/design/DAGhfX77nps/6iEZhY8KOLNrjROBxFa8Rg/edit?utm_content=DAGhfX77nps&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
-+ [User Journey Live Demo](https://vimeo.com/1064962359/b2818e0e87?ts=0&share=copy)
-
-**Old Links:**
-+ [Pitch presentation, roadmap, check-in](https://www.canva.com/design/DAGcNdLOGwU/gB6t-HYGH8PqkeTYNj8JDQ/edit)
-+ [Smart Contract and deployment steps](https://github.com/Kayaba-Attribution/SmartBasket/blob/main/Hardhat/scripts/deploy.ts)
-
 ### 🌟 Core Values
 
 1. **Simplicity & Accessibility** – Breaking down Web3 barriers
@@ -145,6 +136,10 @@ cp .env.example .env.local
 # Run development server
 npm run dev
 ```
+
+**Old Links:**
++ [Pitch presentation, roadmap, check-in](https://www.canva.com/design/DAGcNdLOGwU/gB6t-HYGH8PqkeTYNj8JDQ/edit)
++ [Smart Contract and deployment steps](https://github.com/Kayaba-Attribution/SmartBasket/blob/main/Hardhat/scripts/deploy.ts)
 
 
 ---
