@@ -57,6 +57,31 @@
 - **Offline Capabilities**: Access key features even without internet connection
 - **Cross-Platform**: Works seamlessly across all modern devices and browsers
 
+## 📱 App Gallery
+
+<div align="center">
+  <h3>Smart Portfolio in Action</h3>
+  <p><i>Mobile-first PWA experience with intuitive navigation</i></p>
+</div>
+
+<table>
+  <tr>
+    <td><img src="public/register.jpg" alt="Seamless Registration" width="100%"><br><small>Seamless Registration</small></td>
+    <td><img src="public/dashboard.jpg" alt="Main Dashboard" width="100%"><br><small>Main Dashboard</small></td>
+    <td><img src="public/assets_overview.jpg" alt="Assets Overview" width="100%"><br><small>Assets Overview</small></td>
+  </tr>
+  <tr>
+    <td><img src="public/portfolios.jpg" alt="Portfolio Management" width="100%"><br><small>Portfolio Management</small></td>
+    <td><img src="public/portfolio_details.jpg" alt="Portfolio Details" width="100%"><br><small>Portfolio Details</small></td>
+    <td><img src="public/risk_templates.jpg" alt="Risk Templates" width="100%"><br><small>Risk Templates</small></td>
+  </tr>
+  <tr>
+    <td><img src="public/custom_templates.jpg" alt="Custom Templates" width="100%"><br><small>Custom Templates</small></td>
+    <td><img src="public/points_action.jpg" alt="Points Actions" width="100%"><br><small>Earning Points</small></td>
+    <td><img src="public/points_leaderboard.jpg" alt="Points Leaderboard" width="100%"><br><small>Points Leaderboard</small></td>
+  </tr>
+</table>
+
 ## 🚀 Live Demo & Resources
 
 - [**Live PWA Application**](https://smart-portfolio-v2.vercel.app/) - Install on your mobile device for the best experience!
